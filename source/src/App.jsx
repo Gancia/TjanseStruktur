@@ -5,10 +5,10 @@ import {
   Lock, Unlock, Download, Upload, Users2, Laptop, Sun, Dumbbell, Mic, 
   Bell, Key, Archive, Music, Coffee, Smile, HelpCircle, Calendar, Palette, Eye,
   Layers, Sun as SunIcon, CheckCircle2, UserCircle2, Type, Info, MousePointer2, Save,
-  Zap, Loader, Sparkles, Heart
+  Zap, Loader, Sparkles, Heart, Pencil
 } from 'lucide-react';
 
-const LOCAL_STORAGE_KEY = 'duksetavle-state-v13';
+const LOCAL_STORAGE_KEY = 'tjansestruktur-state-v15';
 
 const THEME_COLORS = {
   nature: { primary: 'bg-emerald-600', hover: 'hover:bg-emerald-700', text: 'text-emerald-600', light: 'bg-emerald-50', border: 'border-emerald-200', hex: '#10b981', lightHex: '#f0fdf4' },
@@ -49,9 +49,10 @@ const App = () => {
   const [lockedSlots, setLockedSlots] = useState({}); 
   const [history, setHistory] = useState({}); 
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditingClass, setIsEditingClass] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   
-  const [appTitle, setAppTitle] = useState('Duksetavle');
+  const [appTitle, setAppTitle] = useState('Tjansestruktur');
   const [useAnimation, setUseAnimation] = useState(true);
   const [animationType, setAnimationType] = useState('spinner'); 
   const [autoAllowDuplicates, setAutoAllowDuplicates] = useState(false);
@@ -80,7 +81,7 @@ const App = () => {
         setAssignments(data.assignments || {});
         setHistory(data.history || {});
         setLockedSlots(data.lockedSlots || {});
-        setAppTitle(data.appTitle || 'Duksetavle');
+        setAppTitle(data.appTitle || 'Tjansestruktur');
         setUseAnimation(data.useAnimation !== undefined ? data.useAnimation : true);
         setAnimationType(data.animationType || 'spinner');
         setAutoAllowDuplicates(data.autoAllowDuplicates || false);
@@ -116,7 +117,7 @@ const App = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `duksetavle-backup.json`;
+    link.download = `tjansestruktur-backup.json`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -133,9 +134,8 @@ const App = () => {
         setAssignments(data.assignments || {});
         setHistory(data.history || {});
         setLockedSlots(data.lockedSlots || {});
-        setAppTitle(data.appTitle || 'Duksetavle');
+        setAppTitle(data.appTitle || 'Tjansestruktur');
         setTheme(data.theme || 'ocean');
-        setAnimationType(data.animationType || 'spinner');
         saveToLocalStorage(data);
         alert("Data genoprettet!");
       } catch (err) { alert("Fejl ved indlæsning."); }
@@ -250,13 +250,22 @@ const App = () => {
     <div className={`min-h-screen p-4 md:p-8 font-sans transition-colors duration-500 ${theme === 'night' ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-800'} ${showPattern ? 'bg-dot-pattern' : ''}`}>
       
       <style dangerouslySetInnerHTML={{ __html: `
-        .bg-dot-pattern { background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px; }
+        .bg-dot-pattern { background-image: radial-gradient(#94a3b8 1px, transparent 1px); background-size: 20px 20px; }
         @media print {
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            body { background-color: white !important; color: black !important; padding: 0 !important; margin: 0 !important; }
+            ${showPattern ? '.bg-dot-pattern { background-image: radial-gradient(#64748b 1px, transparent 1px) !important; background-size: 20px 20px !important; background-repeat: repeat !important; }' : ''}
+            body { background-color: ${theme === 'night' ? '#0f172a' : '#f8fafc'} !important; color: ${theme === 'night' ? 'white' : 'black'} !important; padding: 0 !important; margin: 0 !important; }
             .no-print { display: none !important; }
-            .print-grid { display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 1rem !important; }
-            .print-card { border: 2px solid #e2e8f0 !important; break-inside: avoid; background-color: white !important; }
+            .print-grid { display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 1rem !important; width: 100% !important; }
+            .print-card { 
+                border: ${highContrast ? '4px solid black' : `2px solid ${c.hex}44`} !important; 
+                break-inside: avoid; 
+                background-color: ${theme === 'night' ? '#1e293b' : 'white'} !important; 
+                border-radius: ${useSoftCorners ? '1.5rem' : '0'} !important;
+                box-shadow: none !important;
+            }
+            .print-card-header { background-color: ${c.lightHex} !important; border-bottom: ${highContrast ? '4px solid black' : '1px solid #e2e8f0'} !important; }
+            .print-student-name { border: ${highContrast ? '4px solid black' : '2px solid #e2e8f0'} !important; background-color: ${theme === 'night' ? '#334155' : '#f8fafc'} !important; color: ${theme === 'night' ? 'white' : 'black'} !important; font-weight: ${highContrast ? '900' : 'bold'} !important; }
         }
         @keyframes softFade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .animate-soft-fade { animation: softFade 0.5s ease-out forwards; }
@@ -280,7 +289,7 @@ const App = () => {
 
         <div className="flex flex-wrap justify-center gap-3">
           <button onClick={() => setShowHelp(true)} className={`flex items-center gap-2 px-4 py-2 bg-white text-slate-500 border border-slate-200 ${buttonRoundClass} font-medium hover:bg-slate-50 transition-all shadow-sm`}>
-            <HelpCircle size={20} /> Hjælp
+            <HelpCircle size={20} /> Vejledning
           </button>
           <button onClick={handlePrint} className={`flex items-center gap-2 px-4 py-2 ${c.primary} text-white ${buttonRoundClass} font-medium ${c.hover} shadow-md transition-all active:scale-95`}>
             <Printer size={20} /> Print
@@ -296,29 +305,60 @@ const App = () => {
 
       {showHelp && (
           <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 no-print backdrop-blur-sm">
-              <div className={`bg-white ${roundClass} shadow-2xl max-w-4xl w-full overflow-hidden text-slate-800`}>
+              <div className={`bg-white ${roundClass} shadow-2xl max-w-5xl w-full overflow-hidden text-slate-800`}>
                   <div className={`${c.primary} p-6 flex justify-between items-center text-white`}>
-                      <h2 className="text-xl font-bold flex items-center gap-2"><Info /> Vejledning & Overvejelser</h2>
+                      <h2 className="text-xl font-bold flex items-center gap-2"><Info /> Vejledning & Pædagogisk Grundlag</h2>
                       <button onClick={() => setShowHelp(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors"><X /></button>
                   </div>
-                  <div className="p-8 space-y-8 max-h-[80vh] overflow-y-auto custom-scrollbar text-sm leading-relaxed">
+                  <div className="p-8 space-y-8 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                      
+                      {/* Teknisk Sektion */}
                       <section className="space-y-4">
-                          <h3 className="font-black text-lg flex items-center gap-2 text-slate-800 border-b-2 pb-2"><Shuffle size={20} className={c.text}/> Animationer & Arousal</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <p className="text-slate-600">Nogle elever elsker spændingen ved det flimrende navneskift, mens det for andre skaber angst. Ved at vælge en <strong>Rolig Spinner</strong> eller <strong>Puls</strong> fjerner vi det visuelle kaos, men bevarer en indikation af, at systemet arbejder.</p>
-                              <div className="bg-slate-50 p-4 rounded-xl space-y-2 text-xs">
-                                  <p><strong>• Flimmer:</strong> Høj arousal og spænding.</p>
-                                  <p><strong>• Spinner:</strong> Neutral venten, faktuelt fokus.</p>
-                                  <p><strong>• Puls:</strong> Beroligende rytme.</p>
-                                  <p><strong>• Indfasning:</strong> Blid overgang.</p>
+                          <h3 className="font-black text-lg flex items-center gap-2 text-slate-800 border-b-2 pb-2"><MousePointer2 size={20} className={c.text}/> Teknisk Brugervejledning</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm text-slate-600">
+                              <div className="space-y-3">
+                                  <p><strong>1. Klasselisten:</strong> Skriv elevernes navne i højre kolonne. Tryk + eller Enter. Antallet af elever opdateres automatisk i overskriften. Tryk på ✏️ for hurtigt at slette.</p>
+                                  <p><strong>2. Redigering:</strong> Tryk på <strong>'Indstillinger'</strong> i toppen. Nu kan du rette opgaverne. Klik på et ikon for at skifte det, eller ret navnet på selve opgaven.</p>
+                                  <p><strong>3. Roller & Mål:</strong> I indstillinger dukker der tekstfelter op under hver opgave. Her skriver du specifikke opgaver til hver makker og sætter et mål for hvornår opgaven er færdig.</p>
+                              </div>
+                              <div className="space-y-3">
+                                  <p><strong>4. Tekstfelt (Voksne):</strong> Tryk på 👥 ikonet for at skifte fra makkere til tekstfelt. Perfekt til at skrive en voksens navn eller f.eks. "Hele klassen".</p>
+                                  <p><strong>5. Bland & Lås:</strong> 'Bland elever' fordeler posterne tilfældigt. Tryk på 🔓 ved elevens navn for at låse dem fast før du blander resten.</p>
+                                  <p><strong>6. Backup:</strong> Dine data gemmes kun i din browser. Brug <strong>'Backup'</strong> i indstillinger til at gemme en fil.</p>
                               </div>
                           </div>
                       </section>
-                      <section className="space-y-4 bg-indigo-50 p-6 rounded-2xl">
-                          <h3 className="font-black text-lg flex items-center gap-2 text-indigo-800 border-b-2 pb-2 border-indigo-100"><UserCircle2 size={20}/> Social Tryghed & Roller</h3>
-                          <p className="text-indigo-700">Vi har tilføjet muligheden for at definere <strong>Roller</strong> (f.eks. 'Fejer' / 'Samler op'). Dette mindsker behovet for social forhandling i øjeblikket og skaber ro i makkerskabet fra start.</p>
+
+                      {/* Pædagogisk Sektion */}
+                      <section className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                          <h3 className="font-black text-lg flex items-center gap-2 text-slate-800 border-b-2 pb-2 border-slate-200"><Lightbulb size={20} className="text-amber-500"/> Pædagogiske Tanker & Valg</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-xs leading-relaxed text-slate-600">
+                              <div className="space-y-4">
+                                  <div>
+                                      <h4 className="font-bold uppercase text-slate-800 mb-1 flex items-center gap-1"><UserCircle2 size={14}/> Social Tryghed via Roller</h4>
+                                      <p>Neurodivergerende elever bruger ofte enorme mængder energi på social forhandling ("Hvem af os gør hvad?"). Ved at definere faste <strong>Roller</strong> fjerner vi denne drænende forhandling og skaber ro i makkerskabet.</p>
+                                  </div>
+                                  <div>
+                                      <h4 className="font-bold uppercase text-slate-800 mb-1 flex items-center gap-1"><CheckCircle2 size={14}/> The Power of Done (Mål)</h4>
+                                      <p>Mange elever har svært ved eksekutive funktioner og ved ikke, hvornår en opgave er slut. <strong>'Målet'</strong> fungerer som et konkret stoppunkt, der gør det muligt at afslutte aktiviteten.</p>
+                                  </div>
+                              </div>
+                              <div className="space-y-4">
+                                  <div>
+                                      <h4 className="font-bold uppercase text-slate-800 mb-1 flex items-center gap-1"><Shuffle size={14}/> Arousal & Animation</h4>
+                                      <p>Visuel flimren i lodtrækninger kan skabe angst eller overstimulering. Muligheden for at vælge <strong>Rolige Animationer</strong> (Spinner/Puls) sikrer, at skiftet bliver en rolig og faktuel oplysning.</p>
+                                  </div>
+                                  <div>
+                                      <h4 className="font-bold uppercase text-slate-800 mb-1 flex items-center gap-1"><Palette size={14}/> Visuel Ro & Struktur</h4>
+                                      <p>Farvetemaerne, kontrast-mode og valg af hjørner hjælper med at skabe de skarpe og forudsigelige rammer, som mange elever trives bedst med.</p>
+                                  </div>
+                              </div>
+                          </div>
                       </section>
-                      <button onClick={() => setShowHelp(false)} className={`w-full ${c.primary} text-white font-bold py-4 ${buttonRoundClass} hover:opacity-90 transition-all shadow-lg`}>Forstået</button>
+
+                      <button onClick={() => setShowHelp(false)} className={`w-full ${c.primary} text-white font-bold py-4 ${buttonRoundClass} hover:opacity-90 transition-all shadow-lg flex items-center justify-center gap-2`}>
+                          <Save size={20}/> Jeg er klar til at bruge Tjansestruktur
+                      </button>
                   </div>
               </div>
           </div>
@@ -327,7 +367,7 @@ const App = () => {
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6 print-grid">
           {tasks.map((task) => (
-            <div key={task.id} className={`${theme === 'night' ? 'bg-slate-800' : 'bg-white'} ${roundClass} shadow-sm ${highContrast ? 'border-4 border-black' : `border-2 ${task.isGlobal ? c.border : task.priority ? 'border-amber-200' : 'border-slate-100'}`} overflow-hidden flex flex-col transition-all duration-300 relative print-card`}>
+            <div key={task.id} className={`${theme === 'night' ? 'bg-slate-800 text-white' : 'bg-white'} ${roundClass} shadow-sm ${highContrast ? 'border-4 border-black' : `border-2 ${task.isGlobal ? c.border : task.priority ? 'border-amber-200' : 'border-slate-100'}`} overflow-hidden flex flex-col transition-all duration-300 relative print-card`}>
               <div className={`p-4 flex items-center justify-between ${task.isGlobal ? c.light : task.priority ? 'bg-amber-50/50' : c.light} print-card-header`}>
                 <div className="flex items-center gap-4">
                   <div onClick={() => isEditMode && setIconPickerTaskId(iconPickerTaskId === task.id ? null : task.id)} className={`p-3 bg-white rounded-xl ${c.text} shadow-sm print-icon ${isEditMode ? 'cursor-pointer' : ''} ${highContrast ? 'border-2 border-black' : ''}`}>
@@ -401,7 +441,7 @@ const App = () => {
                                 )}
                               </div>
                             </div>
-                            <div className={`hidden print-student-name p-3 border-2 border-slate-100 ${buttonRoundClass} bg-slate-50 text-center font-bold text-xl min-h-[50px] flex flex-col items-center justify-center text-slate-700 ${highContrast ? 'border-black border-solid font-black text-black' : ''}`}>
+                            <div className={`hidden print-student-name p-3 border-2 border-slate-100 ${buttonRoundClass} bg-slate-50 text-center font-bold text-xl min-h-[50px] flex flex-col items-center justify-center text-slate-700 print-student-name`}>
                                 <span className="text-[10px] font-bold text-slate-400 uppercase">{role || `Makker ${slot + 1}`}</span>
                                 {s || "—"}
                             </div>
@@ -421,50 +461,63 @@ const App = () => {
           <div className={`${theme === 'night' ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'} p-6 ${roundClass} shadow-md border-2`}>
             <h2 className={`text-lg font-black mb-4 flex items-center justify-between uppercase tracking-tight border-b-2 ${theme === 'night' ? 'border-slate-700' : 'border-slate-200'} pb-2`}>
               <div className="flex items-center gap-2"><Users size={20} className={c.text} /> Klassen</div>
-              <span className={`text-xs ${c.primary} px-2 py-1 rounded-full text-white font-bold`}>{students.length}</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs ${c.primary} px-2 py-1 rounded-full text-white font-bold`}>{students.length}</span>
+                <button onClick={() => setIsEditingClass(!isEditingClass)} className={`p-1.5 rounded-lg transition-all ${isEditingClass ? `${c.primary} text-white` : 'text-slate-400 hover:bg-slate-200'}`} title="Rediger klassen">
+                    <Pencil size={14}/>
+                </button>
+              </div>
             </h2>
             <div className={`space-y-1 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar ${theme === 'night' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-xl p-2 border ${theme === 'night' ? 'border-slate-700' : 'border-slate-200'}`}>
               {students.sort((a,b) => a.localeCompare(b)).map((n) => (
-                <div key={n} className={`flex items-center justify-between p-2 rounded-lg hover:bg-white/10 text-sm font-bold ${theme === 'night' ? 'text-slate-300' : 'text-slate-700'}`}><span>{n}</span>{isEditMode && <button onClick={() => { const nl = students.filter(s => s !== n); setStudents(nl); saveToLocalStorage({ students: nl }); }} className="text-slate-400 hover:text-red-500"><X size={16} /></button>}</div>
+                <div key={n} className={`flex items-center justify-between p-2 rounded-lg hover:bg-white/10 text-sm font-bold ${theme === 'night' ? 'text-slate-300' : 'text-slate-700'}`}>
+                    <span>{n}</span>
+                    {isEditingClass && <button onClick={() => { const nl = students.filter(s => s !== n); setStudents(nl); saveToLocalStorage({ students: nl }); }} className="text-slate-400 hover:text-red-500 transition-colors"><X size={16} /></button>}
+                </div>
               ))}
             </div>
-            {isEditMode && (
-              <form onSubmit={(e) => { e.preventDefault(); if (newStudentName.trim() && !students.includes(newStudentName.trim())) { const nl = [...students, newStudentName.trim()]; setStudents(nl); saveToLocalStorage({ students: nl }); setNewStudentName(''); } }} className={`mt-4 pt-4 border-t-2 ${theme === 'night' ? 'border-slate-700' : 'border-slate-200'}`}>
-                <div className={`flex gap-2 ${theme === 'night' ? 'bg-slate-700' : 'bg-white'} p-1 rounded-lg border ${theme === 'night' ? 'border-slate-600' : 'border-slate-300'}`}><input type="text" placeholder="Navn..." value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none" /><button type="submit" className={`${c.primary} text-white p-2 ${buttonRoundClass}`}><Plus size={18} /></button></div>
-                <div className={`mt-6 space-y-4 pt-4`}>
-                    <div className="bg-white/50 p-3 rounded-xl border border-slate-200 space-y-2">
-                        <h4 className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><Type size={12}/> Titel</h4>
-                        <input type="text" value={appTitle} onChange={(e) => {setAppTitle(e.target.value); saveToLocalStorage({appTitle: e.target.value});}} className="w-full text-xs p-2 border border-slate-200 rounded-md focus:outline-none" />
+            <div className={`mt-4 pt-4 border-t-2 ${theme === 'night' ? 'border-slate-700' : 'border-slate-200'}`}>
+                <form onSubmit={(e) => { e.preventDefault(); if (newStudentName.trim() && !students.includes(newStudentName.trim())) { const nl = [...students, newStudentName.trim()]; setStudents(nl); saveToLocalStorage({ students: nl }); setNewStudentName(''); } }} className={`flex gap-2 ${theme === 'night' ? 'bg-slate-700' : 'bg-white'} p-1 rounded-lg border ${theme === 'night' ? 'border-slate-600' : 'border-slate-300'}`}>
+                  <input type="text" placeholder="Elevens navn..." value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none" />
+                  <button type="submit" className={`${c.primary} text-white p-2 ${buttonRoundClass}`}><Plus size={18} /></button>
+                </form>
+                {isEditMode && (
+                    <div className={`mt-6 space-y-4 border-t ${theme === 'night' ? 'border-slate-700' : 'border-slate-200'} pt-4`}>
+                        <div className="bg-white/50 p-3 rounded-xl border border-slate-200 space-y-2">
+                            <h4 className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><Type size={12}/> Titel</h4>
+                            <input type="text" value={appTitle} onChange={(e) => {setAppTitle(e.target.value); saveToLocalStorage({appTitle: e.target.value});}} className="w-full text-xs p-2 border border-slate-200 rounded-md focus:outline-none" />
+                        </div>
+                        <div className="flex gap-2">{Object.entries(THEME_COLORS).map(([k, v]) => (<button key={k} onClick={() => {setTheme(k); saveToLocalStorage({theme: k});}} className={`w-6 h-6 rounded-full border-2 ${theme === k ? 'border-white scale-120 shadow-md' : 'border-transparent'} ${v.primary}`} />))}</div>
+                        <div className="space-y-2 pt-2 border-t border-slate-200">
+                            <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><input type="checkbox" id="anim" checked={useAnimation} onChange={(e) => { setUseAnimation(e.target.checked); saveToLocalStorage({ useAnimation: e.target.checked }); }} className="w-4 h-4 accent-indigo-600" /><label htmlFor="anim" className="text-[10px] uppercase">Animation</label></div>
+                            {useAnimation && (
+                                <div className="grid grid-cols-2 gap-1 ml-6">
+                                    {[
+                                        {id: 'classic', icon: Zap, label: 'Flimmer'},
+                                        {id: 'spinner', icon: Loader, label: 'Spinner'},
+                                        {id: 'fade', icon: Sparkles, label: 'Indfase'},
+                                        {id: 'pulse', icon: Heart, label: 'Puls'}
+                                    ].map(a => (
+                                        <button key={a.id} type="button" onClick={() => {setAnimationType(a.id); saveToLocalStorage({animationType: a.id});}} className={`flex items-center gap-1 p-1.5 text-[9px] font-black uppercase border rounded-md transition-all ${animationType === a.id ? `${c.primary} text-white border-transparent` : 'bg-white text-slate-400 border-slate-200'}`}>
+                                            <a.icon size={10}/> {a.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><input type="checkbox" id="contrast" checked={highContrast} onChange={(e) => { setHighContrast(e.target.checked); saveToLocalStorage({ highContrast: e.target.checked }); }} className="w-4 h-4 accent-indigo-600" /><label htmlFor="contrast" className="text-[10px] uppercase">Kontrast</label></div>
+                            <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><input type="checkbox" id="dups" checked={autoAllowDuplicates} onChange={(e) => { setAutoAllowDuplicates(e.target.checked); saveToLocalStorage({ autoAllowDuplicates: e.target.checked }); }} className="w-4 h-4 accent-indigo-600" /><label htmlFor="dups" className="text-[10px] uppercase">Genbrug navne</label></div>
+                            <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><input type="checkbox" id="corners" checked={useSoftCorners} onChange={(e) => { setUseSoftCorners(e.target.checked); saveToLocalStorage({ useSoftCorners: e.target.checked }); }} className="w-4 h-4 accent-indigo-600" /><label htmlFor="corners" className="text-[10px] uppercase">Bløde former</label></div>
+                            <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><input type="checkbox" id="pattern" checked={showPattern} onChange={(e) => { setShowPattern(e.target.checked); saveToLocalStorage({ showPattern: e.target.checked }); }} className="w-4 h-4 accent-indigo-600" /><label htmlFor="pattern" className="text-[10px] uppercase">Struktur</label></div>
+                            <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><input type="checkbox" id="showWeek" checked={showWeekOnPrint} onChange={(e) => { setShowWeekOnPrint(e.target.checked); saveToLocalStorage({ showWeekOnPrint: e.target.checked }); }} className="w-4 h-4 accent-indigo-600" /><label htmlFor="showWeek" className="text-[10px] uppercase">Uge på print</label></div>
+                        </div>
+                        <div className="pt-2 flex flex-col gap-2">
+                            <button type="button" onClick={exportData} className="text-[10px] font-bold text-slate-400 hover:text-indigo-600 flex items-center gap-1 uppercase tracking-widest"><Download size={12}/> Backup</button>
+                            <button type="button" onClick={() => fileInputRef.current.click()} className="text-[10px] font-bold text-slate-400 hover:text-indigo-600 flex items-center gap-1 uppercase tracking-widest"><Upload size={12}/> Gendan</button>
+                            <input type="file" ref={fileInputRef} onChange={importData} accept=".json" className="hidden" />
+                        </div>
                     </div>
-                    <div className="flex gap-2">{Object.entries(THEME_COLORS).map(([k, v]) => (<button key={k} onClick={() => {setTheme(k); saveToLocalStorage({theme: k});}} className={`w-6 h-6 rounded-full border-2 ${theme === k ? 'border-white scale-120 shadow-md' : 'border-transparent'} ${v.primary}`} />))}</div>
-                    <div className="space-y-2 pt-2 border-t border-slate-200">
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><input type="checkbox" id="anim" checked={useAnimation} onChange={(e) => { setUseAnimation(e.target.checked); saveToLocalStorage({ useAnimation: e.target.checked }); }} className="w-4 h-4 accent-indigo-600" /><label htmlFor="anim" className="text-[10px] uppercase">Animation</label></div>
-                        {useAnimation && (
-                            <div className="grid grid-cols-2 gap-1 ml-6">
-                                {[
-                                    {id: 'classic', icon: Zap, label: 'Flimmer'},
-                                    {id: 'spinner', icon: Loader, label: 'Spinner'},
-                                    {id: 'fade', icon: Sparkles, label: 'Indfase'},
-                                    {id: 'pulse', icon: Heart, label: 'Puls'}
-                                ].map(a => (
-                                    <button key={a.id} type="button" onClick={() => {setAnimationType(a.id); saveToLocalStorage({animationType: a.id});}} className={`flex items-center gap-1 p-1.5 text-[9px] font-black uppercase border rounded-md transition-all ${animationType === a.id ? `${c.primary} text-white border-transparent` : 'bg-white text-slate-400 border-slate-200'}`}>
-                                        <a.icon size={10}/> {a.label}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><input type="checkbox" id="contrast" checked={highContrast} onChange={(e) => { setHighContrast(e.target.checked); saveToLocalStorage({ highContrast: e.target.checked }); }} className="w-4 h-4 accent-indigo-600" /><label htmlFor="contrast" className="text-[10px] uppercase">Kontrast</label></div>
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><input type="checkbox" id="dups" checked={autoAllowDuplicates} onChange={(e) => { setAutoAllowDuplicates(e.target.checked); saveToLocalStorage({ autoAllowDuplicates: e.target.checked }); }} className="w-4 h-4 accent-indigo-600" /><label htmlFor="dups" className="text-[10px] uppercase">Genbrug navne</label></div>
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><input type="checkbox" id="corners" checked={useSoftCorners} onChange={(e) => { setUseSoftCorners(e.target.checked); saveToLocalStorage({ useSoftCorners: e.target.checked }); }} className="w-4 h-4 accent-indigo-600" /><label htmlFor="corners" className="text-[10px] uppercase">Bløde former</label></div>
-                    </div>
-                    <div className="pt-2 flex flex-col gap-2">
-                        <button type="button" onClick={exportData} className="text-[10px] font-bold text-slate-400 hover:text-indigo-600 flex items-center gap-1 uppercase tracking-widest"><Download size={12}/> Backup</button>
-                        <button type="button" onClick={() => fileInputRef.current.click()} className="text-[10px] font-bold text-slate-400 hover:text-indigo-600 flex items-center gap-1 uppercase tracking-widest"><Upload size={12}/> Gendan</button>
-                        <input type="file" ref={fileInputRef} onChange={importData} accept=".json" className="hidden" />
-                    </div>
-                </div>
-              </form>
-            )}
+                )}
+            </div>
           </div>
         </div>
       </div>
