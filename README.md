@@ -23,26 +23,10 @@ Applikationen er bygget på et solidt pædagogisk grundlag med fokus på inklusi
 *   🎲 **Smart Bland:** Algoritme der tager højde for historik (hvem har sidst haft tjansen) og prioriterede opgaver.
 *   🖨️ **Print-optimeret:** Designet til at blive printet på A4 med alle farver, mønstre og ugenummer intakt.
 
-## 🛠️ Installation & Udvikling
-
-For at køre projektet lokalt:
-
-1.  Klon repository:
-    ```bash
-    git clone https://github.com/DIT_BRUGERNAVN/StrukturTavlen.git
-    ```
-2.  Installer afhængigheder:
-    ```bash
-    npm install
-    ```
-3.  Start udviklingsserver:
-    ```bash
-    npm run dev
-    ```
-
 ## 📜 Licens & Rettigheder
 
 Dette projekt er open-source. De pædagogiske principper bag appen er inspireret af evidensbaseret praksis inden for specialpædagogik og inkluderende læringsmiljøer.
 
 ---
 *Skabt med fokus på trivsel og struktur i skolen.*
+
