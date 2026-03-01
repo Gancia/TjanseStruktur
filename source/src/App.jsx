@@ -153,6 +153,10 @@ const App = () => {
   const [weekNumber, setWeekNumber] = useState(getISOWeek().toString());
   const [showWeekOnPrint, setShowWeekOnPrint] = useState(true);
 
+  const [pairedStudents, setPairedStudents] = useState([]); 
+  const [excludedPairs, setExcludedPairs] = useState([]);
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+
   const [newStudentName, setNewStudentName] = useState('');
   const [newTaskName, setNewTaskName] = useState('');
   const [iconPickerTaskId, setIconPickerTaskId] = useState(null);
@@ -198,6 +202,8 @@ const App = () => {
         setShowPattern(data.showPattern || false);
         setWeekNumber(data.weekNumber || getISOWeek().toString());
         setShowWeekOnPrint(data.showWeekOnPrint !== undefined ? data.showWeekOnPrint : true);
+        setPairedStudents(data.pairedStudents || []);
+        setExcludedPairs(data.excludedPairs || []);
       } catch (e) { loadDefaults(); }
     } else { loadDefaults(); }
     setLoading(false);
@@ -211,15 +217,17 @@ const App = () => {
     ]);
     setStudents(['Sofie', 'Lukas', 'Emma', 'Noah', 'Ida', 'Victor', 'Maja', 'Oliver']);
     setAssignments({});
+    setPairedStudents([]);
+    setExcludedPairs([]);
   };
 
   const saveToLocalStorage = (newData) => {
-    const currentState = { students, tasks, assignments, history, lockedSlots, showWeekOnPrint, theme, highContrast, useSoftCorners, showPattern, appTitle, useAnimation, animationType, autoAllowDuplicates, weekNumber };
+    const currentState = { students, tasks, assignments, history, lockedSlots, showWeekOnPrint, theme, highContrast, useSoftCorners, showPattern, appTitle, useAnimation, animationType, autoAllowDuplicates, weekNumber, pairedStudents, excludedPairs };
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ ...currentState, ...newData }));
   };
 
   const exportData = () => {
-    const data = { students, tasks, assignments, history, lockedSlots, showWeekOnPrint, theme, highContrast, useSoftCorners, showPattern, appTitle, useAnimation, animationType, autoAllowDuplicates, weekNumber };
+    const data = { students, tasks, assignments, history, lockedSlots, showWeekOnPrint, theme, highContrast, useSoftCorners, showPattern, appTitle, useAnimation, animationType, autoAllowDuplicates, weekNumber, pairedStudents, excludedPairs };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -243,6 +251,8 @@ const App = () => {
         setLockedSlots(data.lockedSlots || {});
         setAppTitle(data.appTitle || 'Tjansestruktur');
         setTheme(data.theme || 'ocean');
+        setPairedStudents(data.pairedStudents || []);
+        setExcludedPairs(data.excludedPairs || []);
         saveToLocalStorage(data);
         alert("Data genoprettet!");
       } catch (err) { alert("Fejl ved indlæsning."); }
@@ -276,25 +286,56 @@ const App = () => {
         let backupPool = [...students].sort(() => Math.random() - 0.5);
         const newAssignments = { ...assignments };
 
+        const isExcluded = (s1, s2) => {
+          return excludedPairs.some(pair => (pair.includes(s1) && pair.includes(s2)));
+        };
+
+        const getBuddy = (student) => {
+          const pair = pairedStudents.find(p => p.includes(student));
+          return pair ? pair.find(s => s !== student) : null;
+        };
+
         const getCandidate = (taskId, forbidden) => {
-          if (pool.length === 0) {
-              let idx = backupPool.findIndex(s => !forbidden.includes(s));
-              return backupPool[idx === -1 ? 0 : idx];
-          }
+          const tryPool = pool.length > 0 ? pool : backupPool;
           const lastWeek = history[taskId] || [];
-          let idx = pool.findIndex(s => !lastWeek.includes(s) && !forbidden.includes(s));
-          if (idx === -1) idx = pool.findIndex(s => !forbidden.includes(s));
-          return pool.length > 0 ? pool.splice(idx === -1 ? 0 : idx, 1)[0] : null;
+          
+          let idx = tryPool.findIndex(s => !lastWeek.includes(s) && !forbidden.some(f => f === s || isExcluded(s, f)));
+          if (idx === -1) idx = tryPool.findIndex(s => !forbidden.some(f => f === s || isExcluded(s, f)));
+          
+          if (idx === -1 && forbidden.length > 0) {
+            // If we really can't find anyone who isn't excluded, just take anyone not already in the task
+            idx = tryPool.findIndex(s => !forbidden.includes(s));
+          }
+
+          if (idx !== -1) {
+            return pool.length > 0 ? pool.splice(idx, 1)[0] : tryPool[idx];
+          }
+          return tryPool[0] || null;
         };
 
         tasks.forEach(task => {
           if (task.isGlobal) return;
           if (!newAssignments[task.id]) newAssignments[task.id] = [null, null];
-          if (!lockedSlots[`${task.id}-0`]) newAssignments[task.id] = [getCandidate(task.id, []), newAssignments[task.id][1]];
+          
+          // Slot 0
+          if (!lockedSlots[`${task.id}-0`]) {
+            newAssignments[task.id] = [getCandidate(task.id, [newAssignments[task.id][1]].filter(Boolean)), newAssignments[task.id][1]];
+          }
+
+          // Slot 1
           if (!lockedSlots[`${task.id}-1`]) {
-              if (task.priority || pool.length > 0 || autoAllowDuplicates || neededCount > students.length) {
-                  newAssignments[task.id] = [newAssignments[task.id][0], getCandidate(task.id, [newAssignments[task.id][0]])];
-              } else { newAssignments[task.id] = [newAssignments[task.id][0], null]; }
+            const currentSlot0 = newAssignments[task.id][0];
+            const buddy = currentSlot0 ? getBuddy(currentSlot0) : null;
+            
+            if (buddy && pool.includes(buddy) && !lockedSlots[`${task.id}-1`]) {
+              // Try to assign buddy
+              newAssignments[task.id] = [currentSlot0, buddy];
+              pool = pool.filter(s => s !== buddy);
+            } else if (task.priority || pool.length > 0 || autoAllowDuplicates || neededCount > students.length) {
+              newAssignments[task.id] = [currentSlot0, getCandidate(task.id, [currentSlot0].filter(Boolean))];
+            } else {
+              newAssignments[task.id] = [currentSlot0, null];
+            }
           }
         });
         setAssignments(newAssignments);
@@ -436,18 +477,32 @@ const App = () => {
                   <div className="p-8 space-y-8 max-h-[80vh] overflow-y-auto custom-scrollbar">
                       
                       {/* Teknisk Sektion */}
-                      <section className="space-y-4">
-                          <h3 className="font-black text-lg flex items-center gap-2 text-slate-800 border-b-2 pb-2"><MousePointer2 size={20} className={c.text}/> Teknisk Brugervejledning</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm text-slate-600">
+                      <section className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                          <h3 className="font-black text-lg flex items-center gap-2 text-slate-800 border-b-2 pb-2 border-slate-200"><MousePointer2 size={20} className={c.text}/> Teknisk Brugervejledning</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm text-slate-600 leading-relaxed">
                               <div className="space-y-3">
-                                  <p><strong>1. Klasselisten:</strong> Skriv elevernes navne i højre kolonne. Tryk + eller Enter. Antallet af elever opdateres automatisk i overskriften. Tryk på ✏️ for hurtigt at slette.</p>
-                                  <p><strong>2. Redigering:</strong> Tryk på <strong>'Indstillinger'</strong> i toppen. Nu kan du rette opgaverne. Klik på et ikon for at skifte det, eller ret navnet på selve opgaven.</p>
-                                  <p><strong>3. Roller & Mål:</strong> I indstillinger dukker der tekstfelter op under hver opgave. Her skriver du specifikke opgaver til hver makker og sætter et mål for hvornår opgaven er færdig.</p>
+                                  <p><strong>1. Klasselisten:</strong> Skriv elevernes navne i højre kolonne. Tryk + eller Enter. Antallet af elever opdateres automatisk.</p>
+                                  <p><strong>2. Ret & Tilføj:</strong> Tryk på <strong>'Indstillinger'</strong>. Nu kan du rette eksisterende opgaver eller bruge den store <strong>plus-knap (+)</strong> i bunden til at oprette helt nye tjanser.</p>
+                                  <p><strong>3. Roller & Mål:</strong> Under hver opgave kan du skrive specifikke roller til hver makker og sætte et konkret mål (f.eks. "Bordene skal være helt tørre").</p>
+                                  <p><strong>4. Tekstfelt (Voksne):</strong> Tryk på 👥 ikonet for at skifte til et frit tekstfelt - ideelt til navne på voksne eller f.eks. "Hele klassen".</p>
                               </div>
                               <div className="space-y-3">
-                                  <p><strong>4. Tekstfelt (Voksne):</strong> Tryk på 👥 ikonet for at skifte fra makkere til tekstfelt. Perfekt til at skrive en voksens navn eller f.eks. "Hele klassen".</p>
-                                  <p><strong>5. Bland & Lås:</strong> 'Bland elever' fordeler posterne tilfældigt. Tryk på 🔓 ved elevens navn for at låse dem fast før du blander resten.</p>
-                                  <p><strong>6. Backup:</strong> Dine data gemmes kun i din browser. Brug <strong>'Backup'</strong> i indstillinger til at gemme en fil.</p>
+                                  <p><strong>5. Manuelt valg & Lås:</strong> Du kan vælge en elev manuelt i drop-down menuen og derefter trykke på 🔓 for at låse dem fast, før du trykker 'Bland elever' for resten.</p>
+                                  <p><strong>6. Backup:</strong> Dine data gemmes i din browser. Brug <strong>'Backup'</strong> i indstillinger til at gemme en fil, så du aldrig mister dine opsætninger.</p>
+                                  <p><strong>7. Historik:</strong> Systemet husker hvem der havde opgaven sidst (hver gang du trykker på **Print**) og undgår så vidt muligt gengangere ugen efter.</p>
+                              </div>
+                          </div>
+                      </section>
+
+                      {/* Ny Sektion: Makkerskaber */}
+                      <section className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                          <h3 className="font-black text-lg flex items-center gap-2 text-slate-800 border-b-2 pb-2 border-slate-200"><Users2 size={20} className={c.text}/> Makkerskaber & Udelukkelser</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm text-slate-600 leading-relaxed">
+                              <div className="space-y-3">
+                                  <p><strong>Faste makkere:</strong> Under indstillinger kan du binde to elever sammen. Hvis den ene elev trækkes til en tjans, følger den faste makker altid automatisk med.</p>
+                              </div>
+                              <div className="space-y-3">
+                                  <p><strong>Aldrig sammen:</strong> Definer par som aldrig må arbejde sammen. Systemet vil sikre, at disse to elever aldrig bliver parret i en lodtrækning.</p>
                               </div>
                           </div>
                       </section>
@@ -455,32 +510,32 @@ const App = () => {
                       {/* Pædagogisk Sektion */}
                       <section className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
                           <h3 className="font-black text-lg flex items-center gap-2 text-slate-800 border-b-2 pb-2 border-slate-200"><Lightbulb size={20} className="text-amber-500"/> Pædagogiske Tanker & Valg</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-xs leading-relaxed text-slate-600">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-xs leading-relaxed text-slate-600">
                               <div className="space-y-4">
                                   <div>
                                       <h4 className="font-bold uppercase text-slate-800 mb-1 flex items-center gap-1"><UserCircle2 size={14}/> Social Tryghed via Roller</h4>
-                                      <p>Neurodivergerende elever bruger ofte enorme mængder energi på social forhandling ("Hvem af os gør hvad?"). Ved at definere faste <strong>Roller</strong> fjerner vi denne drænende forhandling og skaber ro i makkerskabet.</p>
+                                      <p>Neurodivergerende elever bruger ofte energi på social forhandling. Ved at definere faste <strong>Roller</strong> fjerner vi denne forhandling og skaber ro i makkerskabet.</p>
                                   </div>
                                   <div>
                                       <h4 className="font-bold uppercase text-slate-800 mb-1 flex items-center gap-1"><CheckCircle2 size={14}/> The Power of Done (Mål)</h4>
-                                      <p>Mange elever har svært ved eksekutive funktioner og ved ikke, hvornår en opgave er slut. <strong>'Målet'</strong> fungerer som et konkret stoppunkt, der gør det muligt at afslutte aktiviteten.</p>
+                                      <p>Mange elever ved ikke, hvornår en opgave er slut. <strong>'Målet'</strong> fungerer som et konkret stoppunkt, der gør det muligt at afslutte aktiviteten.</p>
                                   </div>
                               </div>
                               <div className="space-y-4">
                                   <div>
                                       <h4 className="font-bold uppercase text-slate-800 mb-1 flex items-center gap-1"><Shuffle size={14}/> Arousal & Animation</h4>
-                                      <p>Visuel flimren i lodtrækninger kan skabe angst eller overstimulering. Muligheden for at vælge <strong>Rolige Animationer</strong> (Spinner/Puls) sikrer, at skiftet bliver en rolig og faktuel oplysning.</p>
+                                      <p>Visuel flimren kan skabe angst. Muligheden for <strong>Rolige Animationer</strong> (Spinner/Puls) sikrer, at skiftet bliver en rolig og faktuel oplysning.</p>
                                   </div>
                                   <div>
                                       <h4 className="font-bold uppercase text-slate-800 mb-1 flex items-center gap-1"><Palette size={14}/> Visuel Ro & Struktur</h4>
-                                      <p>Farvetemaerne, kontrast-mode og valg af hjørner hjælper med at skabe de skarpe og forudsigelige rammer, som many elever trives bedst med.</p>
+                                      <p>Farvetemaer og valg af former hjælper med at skabe de skarpe og forudsigelige rammer, som mange elever trives bedst med.</p>
                                   </div>
                               </div>
                           </div>
                       </section>
 
                       <button onClick={() => setShowHelp(false)} className={`w-full ${c.primary} text-white font-bold py-4 ${buttonRoundClass} hover:opacity-90 transition-all shadow-lg flex items-center justify-center gap-2`}>
-                          <Save size={20}/> Jeg er klar til at bruge Tjansestruktur
+                          <CheckCircle2 size={20}/> Forstået
                       </button>
                   </div>
               </div>
@@ -524,8 +579,8 @@ const App = () => {
                       </>
                     ) : (
                       <>
-                        <h3 className={`text-xl font-bold ${theme === 'night' && !task.isGlobal && !task.priority ? 'text-slate-100' : 'text-slate-700'} leading-tight ${highContrast ? 'font-black text-black' : ''} truncate`}>{task.name}</h3>
-                        {task.goal && <span className="text-[10px] italic text-slate-400 font-medium">{task.goal}</span>}
+                        <h3 className={`text-xl font-bold ${theme === 'night' && !task.isGlobal && !task.priority ? 'text-slate-100' : 'text-slate-700'} leading-tight ${highContrast ? 'font-black text-black' : ''} break-words`}>{task.name}</h3>
+                        {task.goal && <span className="text-[10px] italic text-slate-400 font-medium break-words block mt-0.5">{task.goal}</span>}
                       </>
                     )}
                   </div>
@@ -560,8 +615,8 @@ const App = () => {
               <div className="p-4 flex gap-4 h-full items-end">
                 {task.isGlobal ? (
                     <div className="flex-1">
-                        <input type="text" value={assignments[task.id]?.[0] || ""} onChange={(e) => { const up = {...assignments, [task.id]: [e.target.value, ""]}; setAssignments(up); saveToLocalStorage({assignments: up}); }} placeholder="Skriv her..." className={`w-full p-4 ${c.light} ${buttonRoundClass} border-2 border-dashed ${c.border} text-center text-xl font-black ${c.text} uppercase tracking-widest focus:outline-none no-print ${highContrast ? 'border-black border-solid' : ''}`} />
-                        <div className={`hidden print-student-name p-3 border-2 border-dashed ${c.border} ${buttonRoundClass} ${c.light} text-center font-black text-2xl min-h-[50px] flex items-center justify-center ${c.text} uppercase ${highContrast ? 'border-black border-solid text-black' : ''}`}>{assignments[task.id]?.[0] || "ALLE ELEVER"}</div>
+                        <input type="text" value={assignments[task.id]?.[0] || ""} onChange={(e) => { const up = {...assignments, [task.id]: [e.target.value, ""]}; setAssignments(up); saveToLocalStorage({assignments: up}); }} placeholder="Skriv her..." className={`w-full p-4 ${c.light} ${buttonRoundClass} border-2 border-dashed ${c.border} text-center text-xl font-black ${c.text} tracking-widest focus:outline-none no-print ${highContrast ? 'border-black border-solid' : ''}`} />
+                        <div className={`hidden print-student-name p-3 border-2 border-dashed ${c.border} ${buttonRoundClass} ${c.light} text-center font-black text-2xl min-h-[50px] flex items-center justify-center ${c.text} ${highContrast ? 'border-black border-solid text-black' : ''}`}>{assignments[task.id]?.[0] || "ALLE ELEVER"}</div>
                     </div>
                 ) : (
                     [0, 1].map((slot) => {
@@ -582,7 +637,7 @@ const App = () => {
                               ) : (
                                 <span>{role || `Makker ${slot + 1}`}</span>
                               )}
-                              {isEditMode && <button onClick={() => { const k = `${task.id}-${slot}`; const nl = {...lockedSlots, [k]: !lockedSlots[k]}; setLockedSlots(nl); saveToLocalStorage({lockedSlots: nl}); }} className={`p-1 rounded-md ${lock ? `${c.text} ${c.light}` : 'text-slate-300'}`}>{lock ? <Lock size={10} /> : <Unlock size={10} />}</button>}
+                              <button onClick={() => { const k = `${task.id}-${slot}`; const nl = {...lockedSlots, [k]: !lockedSlots[k]}; setLockedSlots(nl); saveToLocalStorage({lockedSlots: nl}); }} className={`p-1 rounded-md transition-all ${lock ? `${c.text} ${c.light}` : 'text-slate-300 hover:text-slate-400'}`}>{lock ? <Lock size={10} /> : <Unlock size={10} />}</button>
                             </div>
                             <div className="no-print relative">
                               <div className={`w-full p-3 ${buttonRoundClass} border-2 text-sm transition-all flex items-center justify-center min-h-[44px] ${
@@ -615,7 +670,10 @@ const App = () => {
             </div>
           ))}
           {isEditMode && (
-             <div className={`border-2 border-dashed ${c.border} ${roundClass} p-6 flex flex-col items-center justify-center ${c.light} opacity-60 no-print`}><form onSubmit={(e) => { e.preventDefault(); if (newTaskName.trim()) { const id = Date.now().toString(); const nt = [...tasks, { id, name: newTaskName.trim(), icon: 'Layout', priority: false, isGlobal: false }]; setTasks(nt); setAssignments({...assignments, [id]: [null, null]}); saveToLocalStorage({ tasks: nt }); setNewTaskName(''); } }} className="w-full max-w-xs"><div className={`flex gap-2 ${theme === 'night' ? 'bg-slate-700' : 'bg-white'} p-2 ${buttonRoundClass} shadow-sm`}><input type="text" value={newTaskName} onChange={(e) => setNewTaskName(e.target.value)} placeholder="Ny opgave..." className="flex-1 p-2 text-sm focus:outline-none bg-transparent" /><button type="submit" className={`${c.primary} text-white p-2 ${buttonRoundClass}`}><Plus size={20} /></button></div></form></div>
+             <div onClick={() => setIsAddTaskModalOpen(true)} className={`border-4 border-dashed ${c.border} ${roundClass} p-8 flex flex-col items-center justify-center ${c.light} opacity-60 no-print hover:opacity-100 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]`}>
+                <Plus size={48} className={c.text} />
+                <span className={`mt-2 font-black uppercase tracking-widest ${c.text}`}>Tilføj ny tjans</span>
+             </div>
           )}
         </div>
 
@@ -649,6 +707,73 @@ const App = () => {
                             <h4 className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><Type size={12}/> Titel</h4>
                             <input type="text" value={appTitle} onChange={(e) => {setAppTitle(e.target.value); saveToLocalStorage({appTitle: e.target.value});}} className="w-full text-xs p-2 border border-slate-200 rounded-md focus:outline-none" />
                         </div>
+                        
+                        <div className="bg-white/50 p-3 rounded-xl border border-slate-200 space-y-3">
+                            <h4 className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><Users2 size={12}/> Faste makkere</h4>
+                            <div className="space-y-1">
+                                {pairedStudents.map((pair, idx) => (
+                                    <div key={idx} className="flex items-center justify-between bg-white p-1.5 rounded-md text-[10px] font-bold border border-slate-100">
+                                        <span className="truncate">{pair[0]} + {pair[1]}</span>
+                                        <button onClick={() => { const np = pairedStudents.filter((_, i) => i !== idx); setPairedStudents(np); saveToLocalStorage({pairedStudents: np}); }} className="text-red-400 hover:text-red-600"><X size={12}/></button>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex gap-1">
+                                <select id="pair1" className="flex-1 text-[10px] p-1 border rounded bg-white">
+                                    <option value="">Elev 1</option>
+                                    {students.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                <select id="pair2" className="flex-1 text-[10px] p-1 border rounded bg-white">
+                                    <option value="">Elev 2</option>
+                                    {students.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                <button onClick={() => {
+                                    const s1 = document.getElementById('pair1').value;
+                                    const s2 = document.getElementById('pair2').value;
+                                    if(s1 && s2 && s1 !== s2) {
+                                        const np = [...pairedStudents, [s1, s2]];
+                                        setPairedStudents(np);
+                                        saveToLocalStorage({pairedStudents: np});
+                                        document.getElementById('pair1').value = "";
+                                        document.getElementById('pair2').value = "";
+                                    }
+                                }} className={`${c.primary} text-white p-1 rounded`}><Plus size={14}/></button>
+                            </div>
+                        </div>
+
+                        <div className="bg-white/50 p-3 rounded-xl border border-slate-200 space-y-3">
+                            <h4 className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><UserMinus size={12}/> Aldrig sammen</h4>
+                            <div className="space-y-1">
+                                {excludedPairs.map((pair, idx) => (
+                                    <div key={idx} className="flex items-center justify-between bg-white p-1.5 rounded-md text-[10px] font-bold border border-slate-100">
+                                        <span className="truncate text-red-500">{pair[0]} ≠ {pair[1]}</span>
+                                        <button onClick={() => { const np = excludedPairs.filter((_, i) => i !== idx); setExcludedPairs(np); saveToLocalStorage({excludedPairs: np}); }} className="text-red-400 hover:text-red-600"><X size={12}/></button>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex gap-1">
+                                <select id="ex1" className="flex-1 text-[10px] p-1 border rounded bg-white">
+                                    <option value="">Elev 1</option>
+                                    {students.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                <select id="ex2" className="flex-1 text-[10px] p-1 border rounded bg-white">
+                                    <option value="">Elev 2</option>
+                                    {students.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                <button onClick={() => {
+                                    const s1 = document.getElementById('ex1').value;
+                                    const s2 = document.getElementById('ex2').value;
+                                    if(s1 && s2 && s1 !== s2) {
+                                        const np = [...excludedPairs, [s1, s2]];
+                                        setExcludedPairs(np);
+                                        saveToLocalStorage({excludedPairs: np});
+                                        document.getElementById('ex1').value = "";
+                                        document.getElementById('ex2').value = "";
+                                    }
+                                }} className="bg-red-500 text-white p-1 rounded"><Plus size={14}/></button>
+                            </div>
+                        </div>
+
                         <div className="flex gap-2">{Object.entries(THEME_COLORS).map(([k, v]) => (<button key={k} onClick={() => {setTheme(k); saveToLocalStorage({theme: k});}} className={`w-6 h-6 rounded-full border-2 ${theme === k ? 'border-white scale-120 shadow-md' : 'border-transparent'} ${v.primary}`} />))}</div>
                         <div className="space-y-2 pt-2 border-t border-slate-200">
                             <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><input type="checkbox" id="anim" checked={useAnimation} onChange={(e) => { setUseAnimation(e.target.checked); saveToLocalStorage({ useAnimation: e.target.checked }); }} className="w-4 h-4 accent-indigo-600" /><label htmlFor="anim" className="text-[10px] uppercase">Animation</label></div>
@@ -683,6 +808,47 @@ const App = () => {
           </div>
         </div>
       </div>
+
+      {/* Add Task Modal */}
+      {isAddTaskModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] p-4 no-print backdrop-blur-sm">
+              <div className={`bg-white ${roundClass} shadow-2xl max-w-md w-full overflow-hidden text-slate-800 animate-soft-fade`}>
+                  <div className={`${c.primary} p-6 flex justify-between items-center text-white`}>
+                      <h2 className="text-xl font-bold flex items-center gap-2"><Plus /> Tilføj ny tjans</h2>
+                      <button onClick={() => setIsAddTaskModalOpen(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors"><X /></button>
+                  </div>
+                  <form onSubmit={(e) => { 
+                      e.preventDefault(); 
+                      if (newTaskName.trim()) { 
+                          const id = Date.now().toString(); 
+                          const nt = [...tasks, { id, name: newTaskName.trim(), icon: 'Layout', priority: false, isGlobal: false }]; 
+                          setTasks(nt); 
+                          setAssignments({...assignments, [id]: [null, null]}); 
+                          saveToLocalStorage({ tasks: nt }); 
+                          setNewTaskName(''); 
+                          setIsAddTaskModalOpen(false);
+                      } 
+                  }} className="p-8 space-y-6">
+                      <div className="space-y-2">
+                          <label className="text-xs font-black uppercase text-slate-400 tracking-widest">Navn på tjansen</label>
+                          <input 
+                              type="text" 
+                              autoFocus
+                              value={newTaskName} 
+                              onChange={(e) => setNewTaskName(e.target.value)} 
+                              placeholder="F.eks. 'Hente mælk'..." 
+                              className={`w-full p-4 bg-slate-50 border-2 border-slate-200 ${buttonRoundClass} focus:outline-none focus:border-indigo-500 font-bold text-lg`}
+                          />
+                      </div>
+                      <div className="flex gap-3">
+                          <button type="button" onClick={() => setIsAddTaskModalOpen(false)} className={`flex-1 py-4 px-6 border-2 border-slate-200 ${buttonRoundClass} font-bold text-slate-400 hover:bg-slate-50 transition-all uppercase tracking-widest text-xs`}>Annuller</button>
+                          <button type="submit" disabled={!newTaskName.trim()} className={`flex-1 py-4 px-6 ${c.primary} text-white ${buttonRoundClass} font-bold hover:opacity-90 transition-all uppercase tracking-widest text-xs shadow-lg disabled:opacity-50`}>Opret tjans</button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
+
     </div>
   );
 };
