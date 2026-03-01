@@ -1,11 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Wind, Eraser, Droplets, Trash2, BookOpen, Apple, Users, Shuffle, Plus, X, 
-  Settings, Layout, ArrowRightLeft, Printer, Loader2, Star, Lightbulb, 
+  Settings, Layout, Printer, Loader2, Star, Lightbulb, 
   Lock, Unlock, Download, Upload, Users2, Laptop, Sun, Dumbbell, Mic, 
   Bell, Key, Archive, Music, Coffee, Smile, HelpCircle, Calendar, Palette, Eye,
-  Layers, Sun as SunIcon, CheckCircle2, UserCircle2, Type, Info, MousePointer2, Save,
-  Zap, Loader, Sparkles, Heart, Pencil
+  Layers, CheckCircle2, UserCircle2, Type, Info, MousePointer2, Save,
+  Zap, Loader, Sparkles, Heart, Pencil, ChevronUp, ChevronDown, Utensils, 
+  Milk, Paintbrush, Scissors, Hammer, Trees, Flower2, Cloud, 
+  Thermometer, Gamepad2, Dice5, Puzzle, Monitor, Smartphone, Speaker, Calculator, 
+  Languages, Globe, History, Ghost, Rocket, Moon, Footprints, Bike, Bus, Map, 
+  Compass, Camera, Video, Mail, Phone, Clock, List, ClipboardCheck, Sticker, 
+  Award, Medal, Trophy, Shirt, Search, Library, School, 
+  Home, Construction, Wrench, Plug, Battery, Wifi, Volume2, VolumeX, Mic2, Ear, Brain,
+  Pizza, Sandwich, IceCream, Candy, Beer, Wine, Cake, 
+  Car, Train, Plane, Ship, Anchor, MapPin, Navigation, 
+  Target, Swords, Shield, Wand2, FlaskConical, Microscope, 
+  Brush, PenTool, Music2, Headphones, Radio,
+  Tent, Mountain, Waves, Snowflake, Flame, 
+  Cat, Dog, Bird, Fish, Bug,
+  Gem, Gift, ShoppingBag, ShoppingCart, CreditCard, 
+  Fingerprint, ShieldCheck,
+  BatteryCharging, SunMedium, MoonStar,
+  Timer, AlarmClock, Hourglass, 
+  MessageCircle, MessageSquare, Send, Share2,
+  Trash, Edit3, UserPlus, UserMinus
 } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'tjansestruktur-state-v15';
@@ -29,14 +47,86 @@ const getISOWeek = () => {
 };
 
 const AVAILABLE_ICONS = [
-  { id: 'Wind', icon: Wind, label: 'Feje' }, { id: 'Eraser', icon: Eraser, label: 'Aftørring' },
-  { id: 'Droplets', icon: Droplets, label: 'Vand' }, { id: 'Trash2', icon: Trash2, label: 'Skrald' },
-  { id: 'BookOpen', icon: BookOpen, label: 'Bøger' }, { id: 'Apple', icon: Apple, label: 'Mad/Frugt' },
-  { id: 'Laptop', icon: Laptop, label: 'IT/PC' }, { id: 'Sun', icon: Sun, label: 'Ude' },
-  { id: 'Dumbbell', icon: Dumbbell, label: 'Idræt' }, { id: 'Mic', icon: Mic, label: 'Samling' },
-  { id: 'Bell', icon: Bell, label: 'Klokke' }, { id: 'Key', icon: Key, label: 'Nøgler' },
-  { id: 'Archive', icon: Archive, label: 'Orden' }, { id: 'Music', icon: Music, label: 'Musik' },
-  { id: 'Coffee', icon: Coffee, label: 'Køkken' }, { id: 'Smile', icon: Smile, label: 'Trivsel' },
+  { id: 'Wind', icon: Wind, label: 'Feje' }, 
+  { id: 'Eraser', icon: Eraser, label: 'Aftørring' },
+  { id: 'Droplets', icon: Droplets, label: 'Vand' }, 
+  { id: 'Trash2', icon: Trash2, label: 'Skrald' },
+  { id: 'BookOpen', icon: BookOpen, label: 'Bøger' }, 
+  { id: 'Apple', icon: Apple, label: 'Frugt' },
+  { id: 'Utensils', icon: Utensils, label: 'Bestik' },
+  { id: 'Milk', icon: Milk, label: 'Mælk' },
+  { id: 'GlassWater', icon: Coffee, label: 'Drikke' },
+  { id: 'Laptop', icon: Laptop, label: 'IT/PC' }, 
+  { id: 'Monitor', icon: Monitor, label: 'Skærm' },
+  { id: 'Smartphone', icon: Smartphone, label: 'Mobil' },
+  { id: 'Sun', icon: Sun, label: 'Ude' },
+  { id: 'Trees', icon: Trees, label: 'Natur' },
+  { id: 'Flower2', icon: Flower2, label: 'Blomster' },
+  { id: 'Cloud', icon: Cloud, label: 'Vejr' },
+  { id: 'Dumbbell', icon: Dumbbell, label: 'Idræt' }, 
+  { id: 'Mic', icon: Mic, label: 'Samling' },
+  { id: 'Bell', icon: Bell, label: 'Klokke' }, 
+  { id: 'Key', icon: Key, label: 'Nøgler' },
+  { id: 'Archive', icon: Archive, label: 'Orden' }, 
+  { id: 'Music', icon: Music, label: 'Musik' },
+  { id: 'Speaker', icon: Speaker, label: 'Lyd' },
+  { id: 'Coffee', icon: Coffee, label: 'Køkken' }, 
+  { id: 'Smile', icon: Smile, label: 'Trivsel' },
+  { id: 'Heart', icon: Heart, label: 'Hjerte' },
+  { id: 'Gamepad2', icon: Gamepad2, label: 'Spil' },
+  { id: 'Dice5', icon: Dice5, label: 'Terning' },
+  { id: 'Puzzle', icon: Puzzle, label: 'Puslespil' },
+  { id: 'Paintbrush', icon: Paintbrush, label: 'Male' },
+  { id: 'Scissors', icon: Scissors, label: 'Klippe' },
+  { id: 'Calculator', icon: Calculator, label: 'Matematik' },
+  { id: 'Globe', icon: Globe, label: 'Verden' },
+  { id: 'History', icon: History, label: 'Historie' },
+  { id: 'Rocket', icon: Rocket, label: 'Raket' },
+  { id: 'Footprints', icon: Footprints, label: 'Gåtur' },
+  { id: 'Bike', icon: Bike, label: 'Cykel' },
+  { id: 'Bus', icon: Bus, label: 'Bus' },
+  { id: 'Map', icon: Map, label: 'Kort' },
+  { id: 'Camera', icon: Camera, label: 'Foto' },
+  { id: 'Clock', icon: Clock, label: 'Tid' },
+  { id: 'ClipboardCheck', icon: ClipboardCheck, label: 'Tjekliste' },
+  { id: 'Award', icon: Award, label: 'Præmie' },
+  { id: 'Trophy', icon: Trophy, label: 'Pokal' },
+  { id: 'Shirt', icon: Shirt, label: 'Tøj' },
+  { id: 'Lightbulb', icon: Lightbulb, label: 'Ide' },
+  { id: 'Search', icon: Search, label: 'Søg' },
+  { id: 'School', icon: School, label: 'Skole' },
+  { id: 'Home', icon: Home, label: 'Hjem' },
+  { id: 'Hammer', icon: Hammer, label: 'Værktøj' },
+  { id: 'Wrench', icon: Wrench, label: 'Nøgle' },
+  { id: 'Construction', icon: Construction, label: 'Bygge' },
+  { id: 'Brain', icon: Brain, label: 'Hjerne' },
+  { id: 'Pizza', icon: Pizza, label: 'Pizza' },
+  { id: 'Sandwich', icon: Sandwich, label: 'Mad/Pause' },
+  { id: 'Cake', icon: Cake, label: 'Fødselsdag' },
+  { id: 'Car', icon: Car, label: 'Bil' },
+  { id: 'Train', icon: Train, label: 'Tog' },
+  { id: 'Plane', icon: Plane, label: 'Fly' },
+  { id: 'Ship', icon: Ship, label: 'Skib' },
+  { id: 'MapPin', icon: MapPin, label: 'Sted' },
+  { id: 'Target', icon: Target, label: 'Mål' },
+  { id: 'Swords', icon: Swords, label: 'Kamp' },
+  { id: 'Shield', icon: Shield, label: 'Sikkerhed' },
+  { id: 'Wand2', icon: Wand2, label: 'Magi' },
+  { id: 'FlaskConical', icon: FlaskConical, label: 'Kemi' },
+  { id: 'Microscope', icon: Microscope, label: 'Naturfag' },
+  { id: 'Headphones', icon: Headphones, label: 'Høretelefoner' },
+  { id: 'Radio', icon: Radio, label: 'Radio' },
+  { id: 'Tent', icon: Tent, label: 'Lejr' },
+  { id: 'Waves', icon: Waves, label: 'Vand/Svømning' },
+  { id: 'Snowflake', icon: Snowflake, label: 'Sne' },
+  { id: 'Cat', icon: Cat, label: 'Kat' },
+  { id: 'Dog', icon: Dog, label: 'Hund' },
+  { id: 'Bird', icon: Bird, label: 'Fugl' },
+  { id: 'Bug', icon: Bug, label: 'Insekt' },
+  { id: 'Gem', icon: Gem, label: 'Skat' },
+  { id: 'Gift', icon: Gift, label: 'Gave' },
+  { id: 'Timer', icon: Timer, label: 'Timer' },
+  { id: 'AlarmClock', icon: AlarmClock, label: 'Vækkeur' },
   { id: 'Layout', icon: Layout, label: 'Andet' }
 ];
 
@@ -66,7 +156,24 @@ const App = () => {
   const [newStudentName, setNewStudentName] = useState('');
   const [newTaskName, setNewTaskName] = useState('');
   const [iconPickerTaskId, setIconPickerTaskId] = useState(null);
+  const [iconPages, setIconPages] = useState({});
   const [tempNames, setTempNames] = useState({});
+  
+  const ICONS_PER_PAGE = 24;
+
+  const getIconPage = (iconId) => {
+    const index = AVAILABLE_ICONS.findIndex(i => i.id === iconId);
+    return Math.floor(Math.max(0, index) / ICONS_PER_PAGE);
+  };
+
+  const handleToggleEditMode = () => {
+    if (!isEditMode) {
+      const initialPages = {};
+      tasks.forEach(t => { initialPages[t.id] = getIconPage(t.icon); });
+      setIconPages(initialPages);
+    }
+    setIsEditMode(!isEditMode);
+  };
   
   const fileInputRef = useRef(null);
   const c = THEME_COLORS[theme] || THEME_COLORS.ocean;
@@ -235,6 +342,18 @@ const App = () => {
     saveToLocalStorage({ tasks: up });
   };
 
+  const moveTask = (id, direction) => {
+    const index = tasks.findIndex(t => t.id === id);
+    if (index < 0) return;
+    const newTasks = [...tasks];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newTasks.length) return;
+    
+    [newTasks[index], newTasks[targetIndex]] = [newTasks[targetIndex], newTasks[index]];
+    setTasks(newTasks);
+    saveToLocalStorage({ tasks: newTasks });
+  };
+
   const renderIcon = (iconId, size = 32) => {
     const iconObj = AVAILABLE_ICONS.find(i => i.id === iconId);
     const IconComp = iconObj ? iconObj.icon : Layout;
@@ -271,6 +390,10 @@ const App = () => {
         .animate-soft-fade { animation: softFade 0.5s ease-out forwards; }
         @keyframes calmPulse { 0% { opacity: 0.4; transform: scale(0.98); } 50% { opacity: 0.8; transform: scale(1); } 100% { opacity: 0.4; transform: scale(0.98); } }
         .animate-calm-pulse { animation: calmPulse 1.5s infinite ease-in-out; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .theme-night .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
       `}} />
 
       {showWeekOnPrint && weekNumber && (
@@ -294,7 +417,7 @@ const App = () => {
           <button onClick={handlePrint} className={`flex items-center gap-2 px-4 py-2 ${c.primary} text-white ${buttonRoundClass} font-medium ${c.hover} shadow-md transition-all active:scale-95`}>
             <Printer size={20} /> Print
           </button>
-          <button onClick={() => setIsEditMode(!isEditMode)} className={`flex items-center gap-2 px-4 py-2 transition-all shadow-md ${isEditMode ? `${c.primary} text-white` : `bg-white ${c.text} border ${c.border} hover:bg-slate-50`} ${buttonRoundClass} font-medium`}>
+          <button onClick={handleToggleEditMode} className={`flex items-center gap-2 px-4 py-2 transition-all shadow-md ${isEditMode ? `${c.primary} text-white` : `bg-white ${c.text} border ${c.border} hover:bg-slate-50`} ${buttonRoundClass} font-medium`}>
             <Settings size={20} /> {isEditMode ? 'Færdig' : 'Indstillinger'}
           </button>
           <button onClick={randomize} disabled={isShuffling} className={`flex items-center gap-2 px-4 py-2 ${buttonRoundClass} font-medium shadow-md transition-all active:scale-95 ${isShuffling ? 'bg-slate-400' : 'bg-emerald-500 hover:bg-emerald-600'} text-white`}>
@@ -350,7 +473,7 @@ const App = () => {
                                   </div>
                                   <div>
                                       <h4 className="font-bold uppercase text-slate-800 mb-1 flex items-center gap-1"><Palette size={14}/> Visuel Ro & Struktur</h4>
-                                      <p>Farvetemaerne, kontrast-mode og valg af hjørner hjælper med at skabe de skarpe og forudsigelige rammer, som mange elever trives bedst med.</p>
+                                      <p>Farvetemaerne, kontrast-mode og valg af hjørner hjælper med at skabe de skarpe og forudsigelige rammer, som many elever trives bedst med.</p>
                                   </div>
                               </div>
                           </div>
@@ -369,39 +492,68 @@ const App = () => {
           {tasks.map((task) => (
             <div key={task.id} className={`${theme === 'night' ? 'bg-slate-800 text-white' : 'bg-white'} ${roundClass} shadow-sm ${highContrast ? 'border-4 border-black' : `border-2 ${task.isGlobal ? c.border : task.priority ? 'border-amber-200' : 'border-slate-100'}`} overflow-hidden flex flex-col transition-all duration-300 relative print-card`}>
               <div className={`p-4 flex items-center justify-between ${task.isGlobal ? c.light : task.priority ? 'bg-amber-50/50' : c.light} print-card-header`}>
-                <div className="flex items-center gap-4">
-                  <div onClick={() => isEditMode && setIconPickerTaskId(iconPickerTaskId === task.id ? null : task.id)} className={`p-3 bg-white rounded-xl ${c.text} shadow-sm print-icon ${isEditMode ? 'cursor-pointer' : ''} ${highContrast ? 'border-2 border-black' : ''}`}>
+                <div className="flex items-center gap-4 flex-1">
+                  {isEditMode && (
+                    <div className="flex flex-col gap-0.5 no-print mr-1">
+                      <button onClick={() => moveTask(task.id, 'up')} className="text-slate-400 hover:text-indigo-500 transition-colors p-0.5"><ChevronUp size={16} /></button>
+                      <button onClick={() => moveTask(task.id, 'down')} className="text-slate-400 hover:text-indigo-500 transition-colors p-0.5"><ChevronDown size={16} /></button>
+                    </div>
+                  )}
+                  <div 
+                    className={`p-3 bg-white rounded-xl ${c.text} shadow-sm print-icon ${highContrast ? 'border-2 border-black' : ''}`}
+                  >
                     {renderIcon(task.icon)}
                   </div>
-                  <div className="flex flex-col">
-                    <h3 className={`text-xl font-bold ${theme === 'night' && !task.isGlobal && !task.priority ? 'text-slate-100' : 'text-slate-700'} leading-tight ${highContrast ? 'font-black text-black' : ''}`}>{task.name}</h3>
-                    {task.goal && <span className="text-[10px] italic text-slate-400 font-medium">Mål: {task.goal}</span>}
+                  <div className="flex flex-col flex-1 min-w-0">
+                    {isEditMode ? (
+                      <>
+                        <input 
+                          type="text" 
+                          value={task.name} 
+                          onChange={(e) => updateTask(task.id, { name: e.target.value })}
+                          placeholder="Navn på tjans..."
+                          className={`text-xl font-bold bg-transparent border-b border-dashed ${c.border} focus:outline-none w-full ${theme === 'night' ? 'text-slate-100' : 'text-slate-700'}`}
+                        />
+                        <input 
+                          type="text" 
+                          value={task.goal || ""} 
+                          onChange={(e) => updateTask(task.id, { goal: e.target.value })}
+                          placeholder="Mål (f.eks. 'Bordene er tørre')..."
+                          className={`text-[10px] italic bg-transparent border-b border-dashed border-slate-300 focus:outline-none w-full mt-1 ${theme === 'night' ? 'text-slate-400' : 'text-slate-500'}`}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <h3 className={`text-xl font-bold ${theme === 'night' && !task.isGlobal && !task.priority ? 'text-slate-100' : 'text-slate-700'} leading-tight ${highContrast ? 'font-black text-black' : ''} truncate`}>{task.name}</h3>
+                        {task.goal && <span className="text-[10px] italic text-slate-400 font-medium">{task.goal}</span>}
+                      </>
+                    )}
                   </div>
                 </div>
                 {isEditMode && (
-                  <div className="flex items-center gap-2 no-print text-slate-400">
-                    <button onClick={() => updateTask(task.id, { isGlobal: !task.isGlobal })} className={`p-2 rounded-lg ${task.isGlobal ? `${c.text} ${c.light}` : 'hover:text-indigo-500'}`}><Users2 size={20} /></button>
-                    <button onClick={() => updateTask(task.id, { priority: !task.priority })} className={`p-2 rounded-lg ${task.priority ? 'text-amber-500 bg-amber-100' : 'hover:text-amber-400'}`}><Star size={20} fill={task.priority ? "currentColor" : "none"} /></button>
-                    <button onClick={() => { if(confirm('Slet?')) setTasks(tasks.filter(t => t.id !== task.id)); }} className="hover:text-red-500 p-1"><X size={20} /></button>
+                  <div className="flex items-center gap-1 no-print text-slate-400 ml-2">
+                    <button onClick={() => updateTask(task.id, { isGlobal: !task.isGlobal })} className={`p-2 rounded-lg ${task.isGlobal ? `${c.text} ${c.light}` : 'hover:text-indigo-500'}`} title="Skift til tekstfelt"><Users2 size={18} /></button>
+                    <button onClick={() => updateTask(task.id, { priority: !task.priority })} className={`p-2 rounded-lg ${task.priority ? 'text-amber-500 bg-amber-100' : 'hover:text-amber-400'}`} title="Marker som vigtig"><Star size={18} fill={task.priority ? "currentColor" : "none"} /></button>
+                    <button onClick={() => { if(confirm('Slet tjans?')) setTasks(tasks.filter(t => t.id !== task.id)); }} className="hover:text-red-500 p-2" title="Slet"><X size={18} /></button>
                   </div>
                 )}
               </div>
 
               {isEditMode && (
-                  <div className="px-4 py-2 bg-slate-50/50 border-b border-slate-100 grid grid-cols-2 gap-2 no-print">
-                      <div className="col-span-2"><input type="text" placeholder="Succeskriterie (Mål)..." value={task.goal || ""} onChange={(e) => updateTask(task.id, {goal: e.target.value})} className="w-full text-[10px] p-1.5 border border-slate-200 rounded-md focus:outline-none" /></div>
-                      {!task.isGlobal && (
-                          <>
-                            <input type="text" placeholder="Rolle Makker 1..." value={task.role1 || ""} onChange={(e) => updateTask(task.id, {role1: e.target.value})} className="text-[10px] p-1.5 border border-slate-200 rounded-md" />
-                            <input type="text" placeholder="Rolle Makker 2..." value={task.role2 || ""} onChange={(e) => updateTask(task.id, {role2: e.target.value})} className="text-[10px] p-1.5 border border-slate-200 rounded-md" />
-                          </>
-                      )}
+                <div className="p-4 bg-white border-b border-slate-100 no-print">
+                  <div className="grid grid-cols-6 gap-3 mb-4 min-h-[160px]">
+                    {AVAILABLE_ICONS.slice((iconPages[task.id] || 0) * ICONS_PER_PAGE, ((iconPages[task.id] || 0) + 1) * ICONS_PER_PAGE).map((i) => (
+                      <button key={i.id} onClick={() => { updateTask(task.id, {icon: i.id}); }} className={`p-2 rounded-lg transition-all flex flex-col items-center justify-center gap-1 ${task.icon === i.id ? `ring-2 ring-indigo-500 ${c.light} ${c.text} scale-105 z-10 shadow-sm` : 'text-slate-400 hover:bg-slate-50'}`} title={i.label}>
+                        <i.icon size={20} />
+                        <span className="text-[8px] truncate w-full text-center font-medium">{i.label}</span>
+                      </button>
+                    ))}
                   </div>
-              )}
-
-              {isEditMode && iconPickerTaskId === task.id && (
-                <div className="p-4 bg-white border-b border-slate-100 grid grid-cols-6 gap-3 no-print max-h-48 overflow-y-auto custom-scrollbar">
-                  {AVAILABLE_ICONS.map((i) => <button key={i.id} onClick={() => { updateTask(task.id, {icon: i.id}); setIconPickerTaskId(null); }} className={`p-2 rounded-lg hover:bg-indigo-50 flex items-center justify-center ${task.icon === i.id ? `${c.light} ${c.text}` : 'text-slate-400'}`}><i.icon size={20} /></button>)}
+                  <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                    <button onClick={() => setIconPages(prev => ({...prev, [task.id]: Math.max(0, (prev[task.id] || 0) - 1)}))} disabled={(iconPages[task.id] || 0) === 0} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${(iconPages[task.id] || 0) === 0 ? 'text-slate-200 bg-slate-50 cursor-not-allowed' : 'text-slate-500 bg-slate-100 hover:bg-slate-200 active:scale-95'}`}>Forrige</button>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Side {(iconPages[task.id] || 0) + 1} / {Math.ceil(AVAILABLE_ICONS.length / ICONS_PER_PAGE)}</span>
+                    <button onClick={() => setIconPages(prev => ({...prev, [task.id]: Math.min(Math.ceil(AVAILABLE_ICONS.length / ICONS_PER_PAGE) - 1, (prev[task.id] || 0) + 1)}))} disabled={((iconPages[task.id] || 0) + 1) * ICONS_PER_PAGE >= AVAILABLE_ICONS.length} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all [((iconPages[task.id] || 0) + 1) * ICONS_PER_PAGE >= AVAILABLE_ICONS.length] ? 'text-slate-200 bg-slate-50 cursor-not-allowed' : 'text-slate-500 bg-slate-100 hover:bg-slate-200 active:scale-95'}`}>Næste</button>
+                  </div>
                 </div>
               )}
 
@@ -419,7 +571,17 @@ const App = () => {
                         return (
                           <div key={slot} className="flex-1 flex flex-col gap-1">
                             <div className="flex items-center justify-between no-print text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1">
-                              <span>{role || `Makker ${slot + 1}`}</span>
+                              {isEditMode ? (
+                                <input 
+                                  type="text" 
+                                  value={role || ""} 
+                                  onChange={(e) => updateTask(task.id, slot === 0 ? {role1: e.target.value} : {role2: e.target.value})}
+                                  placeholder={`Rolle ${slot + 1}...`}
+                                  className="bg-transparent border-b border-dashed border-slate-200 focus:outline-none focus:border-indigo-400 w-24"
+                                />
+                              ) : (
+                                <span>{role || `Makker ${slot + 1}`}</span>
+                              )}
                               {isEditMode && <button onClick={() => { const k = `${task.id}-${slot}`; const nl = {...lockedSlots, [k]: !lockedSlots[k]}; setLockedSlots(nl); saveToLocalStorage({lockedSlots: nl}); }} className={`p-1 rounded-md ${lock ? `${c.text} ${c.light}` : 'text-slate-300'}`}>{lock ? <Lock size={10} /> : <Unlock size={10} />}</button>}
                             </div>
                             <div className="no-print relative">
