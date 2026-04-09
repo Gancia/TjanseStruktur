@@ -23,7 +23,7 @@ import {
   BatteryCharging, SunMedium, MoonStar,
   Timer, AlarmClock, Hourglass, 
   MessageCircle, MessageSquare, Send, Share2,
-  Trash, Edit3, UserPlus, UserMinus
+  Trash, Edit3, UserPlus, UserMinus, GlassWater, User, AlertCircle, AlertTriangle
 } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'tjansestruktur-state-v15';
@@ -55,7 +55,7 @@ const AVAILABLE_ICONS = [
   { id: 'Apple', icon: Apple, label: 'Frugt' },
   { id: 'Utensils', icon: Utensils, label: 'Bestik' },
   { id: 'Milk', icon: Milk, label: 'Mælk' },
-  { id: 'GlassWater', icon: Coffee, label: 'Drikke' },
+  { id: 'GlassWater', icon: GlassWater, label: 'Drikke' },
   { id: 'Laptop', icon: Laptop, label: 'IT/PC' }, 
   { id: 'Monitor', icon: Monitor, label: 'Skærm' },
   { id: 'Smartphone', icon: Smartphone, label: 'Mobil' },
@@ -141,6 +141,9 @@ const App = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isEditingClass, setIsEditingClass] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [assignmentWarnings, setAssignmentWarnings] = useState([]);
+  const [showWarningsModal, setShowWarningsModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   
   const [appTitle, setAppTitle] = useState('Tjansestruktur');
   const [useAnimation, setUseAnimation] = useState(true);
@@ -159,15 +162,24 @@ const App = () => {
 
   const [newStudentName, setNewStudentName] = useState('');
   const [newTaskName, setNewTaskName] = useState('');
-  const [iconPickerTaskId, setIconPickerTaskId] = useState(null);
   const [iconPages, setIconPages] = useState({});
   const [tempNames, setTempNames] = useState({});
+  const [activeEffect, setActiveEffect] = useState(null); // 'poof', 'space', 'spooky'
   
   const ICONS_PER_PAGE = 24;
 
   const getIconPage = (iconId) => {
     const index = AVAILABLE_ICONS.findIndex(i => i.id === iconId);
     return Math.floor(Math.max(0, index) / ICONS_PER_PAGE);
+  };
+
+  const [toast, setToast] = useState(null);
+  const toastTimeoutRef = useRef(null);
+
+  const showToast = (message, type = 'success') => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToast({ message, type });
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
   };
 
   const handleToggleEditMode = () => {
@@ -182,15 +194,50 @@ const App = () => {
   const fileInputRef = useRef(null);
   const c = THEME_COLORS[theme] || THEME_COLORS.ocean;
 
+  const getBuddies = (student) => {
+    const name = student ? student.trim() : "";
+    return pairedStudents.filter(p => p.map(s => s.trim()).includes(name)).map(p => p.find(s => s.trim() !== name));
+  };
+
+  const getBuddy = (student) => {
+    const name = student ? student.trim() : "";
+    const pair = pairedStudents.find(p => p.map(s => s.trim()).includes(name));
+    return pair ? pair.find(s => s.trim() !== name) : null;
+  };
+
+  const getExclusions = (student) => {
+    const name = student ? student.trim() : "";
+    return excludedPairs.filter(p => p.map(s => s.trim()).includes(name)).map(p => p.find(s => s.trim() !== name));
+  };
+
   useEffect(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const currentWeek = getISOWeek().toString();
+    
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        setStudents(data.students || []);
+        let loadedHistory = data.history || {};
+        
+        // Hvis ugen er skiftet, arkiver nuværende tildelinger til historik
+        if (data.weekNumber && data.weekNumber !== currentWeek) {
+          const oldAssignments = data.assignments || {};
+          const archivedHistory = { ...loadedHistory };
+          Object.keys(oldAssignments).forEach(tid => {
+            const task = (data.tasks || []).find(t => t.id === tid);
+            if (task && !task.isGlobal) {
+              archivedHistory[tid] = (oldAssignments[tid] || []).filter(s => s && typeof s === 'string' && s !== "");
+            }
+          });
+          loadedHistory = archivedHistory;
+          // Opdater localStorage med den nye arkiverede historik med det samme
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ ...data, history: loadedHistory, weekNumber: currentWeek }));
+        }
+
+        setStudents((data.students || []).map(s => s.trim()));
         setTasks(data.tasks || []);
         setAssignments(data.assignments || {});
-        setHistory(data.history || {});
+        setHistory(loadedHistory);
         setLockedSlots(data.lockedSlots || {});
         setAppTitle(data.appTitle || 'Tjansestruktur');
         setUseAnimation(data.useAnimation !== undefined ? data.useAnimation : true);
@@ -200,12 +247,15 @@ const App = () => {
         setHighContrast(data.highContrast || false);
         setUseSoftCorners(data.useSoftCorners !== undefined ? data.useSoftCorners : true);
         setShowPattern(data.showPattern || false);
-        setWeekNumber(data.weekNumber || getISOWeek().toString());
+        setWeekNumber(currentWeek);
         setShowWeekOnPrint(data.showWeekOnPrint !== undefined ? data.showWeekOnPrint : true);
         setPairedStudents(data.pairedStudents || []);
         setExcludedPairs(data.excludedPairs || []);
       } catch (e) { loadDefaults(); }
-    } else { loadDefaults(); }
+    } else { 
+      loadDefaults(); 
+      setWeekNumber(currentWeek);
+    }
     setLoading(false);
   }, []);
 
@@ -223,6 +273,7 @@ const App = () => {
 
   const saveToLocalStorage = (newData) => {
     const currentState = { students, tasks, assignments, history, lockedSlots, showWeekOnPrint, theme, highContrast, useSoftCorners, showPattern, appTitle, useAnimation, animationType, autoAllowDuplicates, weekNumber, pairedStudents, excludedPairs };
+    if (newData.students) newData.students = newData.students.map(s => s.trim());
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ ...currentState, ...newData }));
   };
 
@@ -244,7 +295,7 @@ const App = () => {
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target.result);
-        setStudents(data.students || []);
+        setStudents((data.students || []).map(s => s.trim()));
         setTasks(data.tasks || []);
         setAssignments(data.assignments || {});
         setHistory(data.history || {});
@@ -254,126 +305,229 @@ const App = () => {
         setPairedStudents(data.pairedStudents || []);
         setExcludedPairs(data.excludedPairs || []);
         saveToLocalStorage(data);
-        alert("Data genoprettet!");
-      } catch (err) { alert("Fejl ved indlæsning."); }
+        showToast("Data genoprettet!");
+      } catch (err) { showToast("Fejl ved indlæsning.", "error"); }
     };
     reader.readAsText(file);
   };
 
   const randomize = () => {
     if (isShuffling || students.length === 0) return;
-    const normalTasks = tasks.filter(t => !t.isGlobal);
-    let neededCount = 0;
-    normalTasks.forEach(t => {
-        if (!lockedSlots[`${t.id}-0`]) neededCount++;
-        if (t.priority && !lockedSlots[`${t.id}-1`]) neededCount++;
-    });
-
-    if (neededCount > students.length && !autoAllowDuplicates) {
-        if (!confirm(`Der er ${neededCount} pladser, men kun ${students.length} elever. Skal elever have to tjanser?`)) return;
-    }
+    
+    const shuffleArray = (array) => {
+        const newArr = [...array];
+        for (let i = newArr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+        }
+        return newArr;
+    };
 
     const performRandomize = () => {
-        let pool = students.filter(s => {
-            let isLocked = false;
-            tasks.forEach(t => { 
-              if(!t.isGlobal && lockedSlots[`${t.id}-0`] && assignments[t.id]?.[0] === s) isLocked = true; 
-              if(!t.isGlobal && lockedSlots[`${t.id}-1`] && assignments[t.id]?.[1] === s) isLocked = true; 
-            });
-            return !isLocked;
-        }).sort(() => Math.random() - 0.5);
-        
-        let backupPool = [...students].sort(() => Math.random() - 0.5);
-        const newAssignments = { ...assignments };
+        const newAssignments = {};
+        const rawWarnings = [];
+        const usedStudents = new Set();
 
-        const isExcluded = (s1, s2) => {
-          return excludedPairs.some(pair => (pair.includes(s1) && pair.includes(s2)));
-        };
+        // Gem den aktuelle animationstype så vi ved hvilken effekt vi skal køre til slut
+        const currentAnim = animationType;
 
-        const getBuddy = (student) => {
-          const pair = pairedStudents.find(p => p.includes(student));
-          return pair ? pair.find(s => s !== student) : null;
-        };
-
-        const getCandidate = (taskId, forbidden) => {
-          const tryPool = pool.length > 0 ? pool : backupPool;
-          const lastWeek = history[taskId] || [];
-          
-          let idx = tryPool.findIndex(s => !lastWeek.includes(s) && !forbidden.some(f => f === s || isExcluded(s, f)));
-          if (idx === -1) idx = tryPool.findIndex(s => !forbidden.some(f => f === s || isExcluded(s, f)));
-          
-          if (idx === -1 && forbidden.length > 0) {
-            // If we really can't find anyone who isn't excluded, just take anyone not already in the task
-            idx = tryPool.findIndex(s => !forbidden.includes(s));
-          }
-
-          if (idx !== -1) {
-            return pool.length > 0 ? pool.splice(idx, 1)[0] : tryPool[idx];
-          }
-          return tryPool[0] || null;
-        };
-
+        // 1. Initialiser og find manuelt låste elever
         tasks.forEach(task => {
-          if (task.isGlobal) return;
-          if (!newAssignments[task.id]) newAssignments[task.id] = [null, null];
-          
-          // Slot 0
-          if (!lockedSlots[`${task.id}-0`]) {
-            newAssignments[task.id] = [getCandidate(task.id, [newAssignments[task.id][1]].filter(Boolean)), newAssignments[task.id][1]];
-          }
-
-          // Slot 1
-          if (!lockedSlots[`${task.id}-1`]) {
-            const currentSlot0 = newAssignments[task.id][0];
-            const buddy = currentSlot0 ? getBuddy(currentSlot0) : null;
-            
-            if (buddy && pool.includes(buddy) && !lockedSlots[`${task.id}-1`]) {
-              // Try to assign buddy
-              newAssignments[task.id] = [currentSlot0, buddy];
-              pool = pool.filter(s => s !== buddy);
-            } else if (task.priority || pool.length > 0 || autoAllowDuplicates || neededCount > students.length) {
-              newAssignments[task.id] = [currentSlot0, getCandidate(task.id, [currentSlot0].filter(Boolean))];
-            } else {
-              newAssignments[task.id] = [currentSlot0, null];
+            if (task.isGlobal) {
+                newAssignments[task.id] = assignments[task.id] || ["", ""];
+                return;
             }
-          }
+            newAssignments[task.id] = [
+                lockedSlots[`${task.id}-0`] ? assignments[task.id]?.[0] : null,
+                lockedSlots[`${task.id}-1`] ? assignments[task.id]?.[1] : null
+            ];
+            if (newAssignments[task.id][0]) usedStudents.add(newAssignments[task.id][0].trim());
+            if (newAssignments[task.id][1]) usedStudents.add(newAssignments[task.id][1].trim());
         });
+
+        // 2. Tvungen makker-logik for låste pladser
+        tasks.forEach(task => {
+            if (task.isGlobal || task.singleSlot) return;
+            [0, 1].forEach(slot => {
+                const partner = newAssignments[task.id][slot];
+                if (partner) {
+                    const buddy = getBuddy(partner);
+                    const otherSlot = slot === 0 ? 1 : 0;
+                    if (buddy && !newAssignments[task.id][otherSlot] && !usedStudents.has(buddy.trim())) {
+                        newAssignments[task.id][otherSlot] = buddy;
+                        usedStudents.add(buddy.trim());
+                    }
+                }
+            });
+        });
+
+        let availableStudents = shuffleArray(students.filter(s => !usedStudents.has(s.trim())));
+        
+        const isExcluded = (s1, s2) => {
+            if (!s1 || !s2) return false;
+            return excludedPairs.some(p => 
+                (p[0].trim() === s1.trim() && p[1].trim() === s2.trim()) || 
+                (p[0].trim() === s2.trim() && p[1].trim() === s1.trim())
+            );
+        };
+        const wasHereLastWeek = (tid, student) => (history[tid] || []).map(s => s.trim()).includes(student.trim());
+
+        // Bland opgaverne internt i prioritet for at undgå 'Opgave 1'-bias
+        const priorityTasks = shuffleArray(tasks.filter(t => t.priority));
+        const regularTasks = shuffleArray(tasks.filter(t => !t.priority));
+        const sortedTasks = [...priorityTasks, ...regularTasks];
+
+        // 4. Tildel par til ledige dobbelt-tjanser (Bland her for at undgå at par altid får prioriterede opgaver)
+        const doubleSlotTasks = shuffleArray(tasks.filter(t => !t.isGlobal && !t.singleSlot));
+        doubleSlotTasks.forEach(task => {
+            if (newAssignments[task.id][0] || newAssignments[task.id][1]) return;
+
+            const pairCandidateIdx = availableStudents.findIndex(s => {
+                const b = getBuddy(s);
+                return b && availableStudents.includes(b) && !wasHereLastWeek(task.id, s) && !wasHereLastWeek(task.id, b);
+            });
+
+            if (pairCandidateIdx > -1) {
+                const s1 = availableStudents[pairCandidateIdx];
+                const s2 = getBuddy(s1);
+                newAssignments[task.id] = [s1, s2];
+                availableStudents = availableStudents.filter(s => s !== s1 && s !== s2);
+            }
+        });
+
+        // 5. Fyld Vigtige opgaver (Sørg for at de får begge pladser før almindelige får deres første)
+        const priorityTasksList = tasks.filter(t => t.priority && !t.isGlobal);
+        const regularTasksList = tasks.filter(t => !t.priority && !t.isGlobal);
+
+        // A. Fyld Vigtige - Slot 0
+        priorityTasksList.forEach(task => {
+            if (newAssignments[task.id][0]) return;
+            let candidates = availableStudents.filter(s => !wasHereLastWeek(task.id, s));
+            const individuals = candidates.filter(s => !getBuddy(s));
+            if (individuals.length > 0) candidates = individuals;
+
+            let chosen = candidates.length > 0 ? candidates[0] : (availableStudents.length > 0 ? availableStudents[0] : null);
+            if (chosen) {
+                newAssignments[task.id][0] = chosen;
+                availableStudents = availableStudents.filter(s => s !== chosen);
+                const b = getBuddy(chosen);
+                if (b && !task.singleSlot && !newAssignments[task.id][1] && availableStudents.includes(b)) {
+                    newAssignments[task.id][1] = b;
+                    availableStudents = availableStudents.filter(s => s !== b);
+                }
+            }
+        });
+
+        // B. Fyld Vigtige - Slot 1 (Hvis de stadig mangler en makker)
+        priorityTasksList.forEach(task => {
+            if (task.singleSlot || newAssignments[task.id][1] || availableStudents.length === 0) return;
+            const partner = newAssignments[task.id][0];
+            let candidates = availableStudents.filter(s => !isExcluded(s, partner) && !wasHereLastWeek(task.id, s));
+            const individuals = candidates.filter(s => !getBuddy(s));
+            if (individuals.length > 0) candidates = individuals;
+
+            let chosen = candidates.length > 0 ? candidates[0] : (availableStudents.filter(s => !isExcluded(s, partner)).length > 0 ? availableStudents.filter(s => !isExcluded(s, partner))[0] : null);
+            if (chosen) {
+                newAssignments[task.id][1] = chosen;
+                availableStudents = availableStudents.filter(s => s !== chosen);
+            }
+        });
+
+        // 6. Fyld Almindelige opgaver - Slot 0
+        regularTasksList.forEach(task => {
+            if (newAssignments[task.id][0]) return;
+            let candidates = availableStudents.filter(s => !wasHereLastWeek(task.id, s));
+            const individuals = candidates.filter(s => !getBuddy(s));
+            if (individuals.length > 0) candidates = individuals;
+
+            let chosen = candidates.length > 0 ? candidates[0] : (availableStudents.length > 0 ? availableStudents[0] : null);
+            if (chosen) {
+                newAssignments[task.id][0] = chosen;
+                availableStudents = availableStudents.filter(s => s !== chosen);
+                const b = getBuddy(chosen);
+                if (b && !task.singleSlot && !newAssignments[task.id][1] && availableStudents.includes(b)) {
+                    newAssignments[task.id][1] = b;
+                    availableStudents = availableStudents.filter(s => s !== b);
+                }
+            }
+        });
+
+        // 7. Fyld Almindelige opgaver - Slot 1
+        regularTasksList.forEach(task => {
+            if (task.singleSlot || newAssignments[task.id][1] || availableStudents.length === 0) return;
+            const partner = newAssignments[task.id][0];
+            let candidates = availableStudents.filter(s => !isExcluded(s, partner) && !wasHereLastWeek(task.id, s));
+            const individuals = candidates.filter(s => !getBuddy(s));
+            if (individuals.length > 0) candidates = individuals;
+
+            let chosen = candidates.length > 0 ? candidates[0] : (availableStudents.filter(s => !isExcluded(s, partner)).length > 0 ? availableStudents.filter(s => !isExcluded(s, partner))[0] : null);
+            if (chosen) {
+                newAssignments[task.id][1] = chosen;
+                availableStudents = availableStudents.filter(s => s !== chosen);
+            }
+        });
+
+        // 8. Fallback genbrug
+        sortedTasks.forEach(task => {
+            if (task.isGlobal || newAssignments[task.id][0]) return;
+            const partner = newAssignments[task.id][1];
+            const backupPool = shuffleArray(students).filter(s => s !== partner);
+            if (backupPool.length > 0) {
+                newAssignments[task.id][0] = backupPool[0];
+                rawWarnings.push(`${backupPool[0]} er sat på ${task.name} (genbrug) for at fylde opgaven.`);
+            }
+        });
+
+        // Opdater historik-stat og warnings
+        const updatedHistory = { ...history };
+        tasks.forEach(t => {
+            if (t.isGlobal) return;
+            const a = newAssignments[t.id] || [];
+            if (a[0] && wasHereLastWeek(t.id, a[0])) rawWarnings.push(`${a[0]} har fået ${t.name} to gange i træk.`);
+            if (a[1] && wasHereLastWeek(t.id, a[1])) rawWarnings.push(`${a[1]} har fået ${t.name} to gange i træk.`);
+            if (a[0] && a[1] && isExcluded(a[0], a[1])) rawWarnings.push(`${a[0]} og ${a[1]} er sat sammen på ${t.name} trods udelukkelse.`);
+        });
+
         setAssignments(newAssignments);
-        saveToLocalStorage({ assignments: newAssignments });
+        setAssignmentWarnings([...new Set(rawWarnings)]);
+        saveToLocalStorage({ assignments: newAssignments, history: history });
         setIsShuffling(false);
+        setActiveEffect(null);
+
+        // Trigger 'Puff' effekt hvis det var magi
+        if (currentAnim === 'magic') {
+            setActiveEffect('poof');
+            setTimeout(() => setActiveEffect(null), 1000);
+        }
     };
 
     if (useAnimation) {
         setIsShuffling(true);
+        if (animationType === 'rocket') setActiveEffect('space');
+        
         const interval = setInterval(() => {
           const animationData = {};
           tasks.forEach(t => {
-            if (animationType === 'classic') {
-                animationData[t.id] = t.isGlobal ? [assignments[t.id]?.[0] || 'ALLE ELEVER', ''] : [
-                    students[Math.floor(Math.random() * students.length)],
-                    students[Math.floor(Math.random() * students.length)]
-                ];
+            if (t.isGlobal) {
+                animationData[t.id] = [assignments[t.id]?.[0] || 'ALLE ELEVER', ''];
             } else {
-                animationData[t.id] = ['...', '...'];
+                animationData[t.id] = [0, 1].map(slot => {
+                    if (slot === 1 && t.singleSlot) return null;
+                    if (lockedSlots[`${t.id}-${slot}`]) return assignments[t.id]?.[slot] || '...';
+                    const randS = students[Math.floor(Math.random() * students.length)];
+                    return randS || '...';
+                });
             }
           });
           setTempNames(animationData);
         }, 80);
-        setTimeout(() => { clearInterval(interval); performRandomize(); }, 2000);
+        setTimeout(() => { clearInterval(interval); performRandomize(); }, 2500);
     } else {
         performRandomize();
     }
   };
 
   const handlePrint = () => {
-    const newHistory = {};
-    Object.keys(assignments).forEach(tid => { 
-        if (!tasks.find(t => t.id === tid)?.isGlobal) {
-            newHistory[tid] = (assignments[tid] || []).filter(s => s && students.includes(s)); 
-        }
-    });
-    setHistory(newHistory);
-    saveToLocalStorage({ history: newHistory });
     window.print();
   };
 
@@ -381,6 +535,50 @@ const App = () => {
     const up = tasks.map(t => t.id === id ? { ...t, ...fields } : t);
     setTasks(up);
     saveToLocalStorage({ tasks: up });
+  };
+
+  const toggleLock = (taskId, slot) => {
+    const key = `${taskId}-${slot}`;
+    const isNowLocked = !lockedSlots[key];
+    const newLocks = { ...lockedSlots, [key]: isNowLocked };
+    
+    const task = tasks.find(t => t.id === taskId);
+    if (task && !task.singleSlot && !task.isGlobal) {
+        const student = assignments[taskId]?.[slot];
+        const buddy = student ? getBuddy(student) : null;
+        const otherSlot = slot === 0 ? 1 : 0;
+        const otherKey = `${taskId}-${otherSlot}`;
+        
+        if (isNowLocked && buddy) {
+            const currentAssignments = assignments[taskId] || [null, null];
+            const updatedAssignments = { ...assignments, [taskId]: currentAssignments.map((s, i) => i === otherSlot ? buddy : s) };
+            setAssignments(updatedAssignments);
+            newLocks[otherKey] = true;
+            saveToLocalStorage({ assignments: updatedAssignments, lockedSlots: newLocks });
+        } else if (!isNowLocked && buddy) {
+            // Hvis man låser op, så lås også makkeren op
+            newLocks[otherKey] = false;
+        }
+    }
+    
+    setLockedSlots(newLocks);
+    saveToLocalStorage({ lockedSlots: newLocks });
+  };
+
+  const handleManualAssignment = (taskId, slot, value) => {
+    let newAssignments = { ...assignments, [taskId]: (assignments[taskId] || [null, null]).map((v, i) => i === slot ? value : v) };
+    
+    const task = tasks.find(t => t.id === taskId);
+    if (task && !task.singleSlot && !task.isGlobal && value) {
+        const buddy = getBuddy(value);
+        const otherSlot = slot === 0 ? 1 : 0;
+        if (buddy) {
+            newAssignments[taskId][otherSlot] = buddy;
+        }
+    }
+    
+    setAssignments(newAssignments);
+    saveToLocalStorage({ assignments: newAssignments });
   };
 
   const moveTask = (id, direction) => {
@@ -407,8 +605,32 @@ const App = () => {
   const buttonRoundClass = useSoftCorners ? 'rounded-xl' : 'rounded-none';
 
   return (
-    <div className={`min-h-screen p-4 md:p-8 font-sans transition-colors duration-500 ${theme === 'night' ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-800'} ${showPattern ? 'bg-dot-pattern' : ''}`}>
+      <div className={`min-h-screen p-4 md:p-8 font-sans transition-colors duration-500 ${theme === 'night' ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-800'} ${showPattern ? 'bg-dot-pattern' : ''} ${activeEffect === 'space' ? 'bg-slate-950 overflow-hidden' : ''}`}>
       
+      {/* Visual Overlays */}
+      {activeEffect === 'poof' && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center pointer-events-none">
+              <div className="animate-poof flex flex-col items-center">
+                  <div className="w-64 h-64 bg-slate-300 rounded-full blur-3xl opacity-50" />
+                  <span className="text-8xl font-black text-amber-500 drop-shadow-2xl -mt-48 select-none tracking-tighter">PUFF!</span>
+              </div>
+          </div>
+      )}
+
+      {activeEffect === 'space' && (
+          <div className="fixed inset-0 z-[250] pointer-events-none overflow-hidden">
+              {[...Array(50)].map((_, i) => (
+                  <div key={i} className="absolute bg-white rounded-full animate-star" style={{
+                      width: Math.random() * 3 + 'px',
+                      height: Math.random() * 3 + 'px',
+                      left: Math.random() * 100 + '%',
+                      top: Math.random() * 100 + '%',
+                      animationDelay: Math.random() * 2 + 's'
+                  }} />
+              ))}
+          </div>
+      )}
+
       <style dangerouslySetInnerHTML={{ __html: `
         .bg-dot-pattern { background-image: radial-gradient(#94a3b8 1px, transparent 1px); background-size: 20px 20px; }
         @media print {
@@ -431,6 +653,22 @@ const App = () => {
         .animate-soft-fade { animation: softFade 0.5s ease-out forwards; }
         @keyframes calmPulse { 0% { opacity: 0.4; transform: scale(0.98); } 50% { opacity: 0.8; transform: scale(1); } 100% { opacity: 0.4; transform: scale(0.98); } }
         .animate-calm-pulse { animation: calmPulse 1.5s infinite ease-in-out; }
+        @keyframes rocket { 0% { transform: translateY(0) rotate(0); } 10% { transform: translateY(-2px) rotate(-5deg); } 20% { transform: translateY(0) rotate(5deg); } 80% { transform: translateY(-10px); opacity: 1; } 100% { transform: translateY(-30px); opacity: 0; } }
+        .animate-rocket { animation: rocket 0.6s infinite; }
+        @keyframes dice { 0% { transform: rotate(0) scale(1); } 25% { transform: rotate(90deg) scale(1.1); } 50% { transform: rotate(180deg) scale(1); } 75% { transform: rotate(270deg) scale(1.1); } 100% { transform: rotate(360deg) scale(1); } }
+        .animate-dice { animation: dice 0.5s infinite linear; }
+        @keyframes ghost { 0% { opacity: 0.3; filter: blur(3px); transform: scale(0.9); } 50% { opacity: 0.7; filter: blur(0); transform: scale(1.05); } 100% { opacity: 0.3; filter: blur(3px); transform: scale(0.9); } }
+        .animate-ghost { animation: ghost 1s infinite ease-in-out; }
+        @keyframes magic { 0% { transform: scale(0.8) rotate(0); filter: hue-rotate(0deg) drop-shadow(0 0 5px #fbbf24); } 50% { transform: scale(1.2) rotate(180deg); filter: hue-rotate(180deg) drop-shadow(0 0 15px #f472b6); } 100% { transform: scale(0.8) rotate(360deg); filter: hue-rotate(360deg) drop-shadow(0 0 5px #fbbf24); } }
+        .animate-magic { animation: magic 0.8s infinite linear; }
+        @keyframes slotRoll { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
+        .animate-slot-roll { animation: slotRoll 0.2s infinite linear; }
+        @keyframes poof { 0% { transform: scale(0.5); opacity: 0; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+        .animate-poof { animation: poof 0.6s ease-out forwards; }
+        @keyframes starTwinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .animate-star { animation: starTwinkle 1.5s infinite ease-in-out; }
+        @keyframes spookyFloat { 0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; } 25% { transform: translate(10px, -10px) scale(1.1); opacity: 0.8; } 75% { transform: translate(-10px, 10px) scale(0.9); opacity: 0.4; } }
+        .animate-spooky { animation: spookyFloat 2s infinite ease-in-out; }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
@@ -452,6 +690,17 @@ const App = () => {
         </div>
 
         <div className="flex flex-wrap justify-center gap-3">
+          {assignmentWarnings.length > 0 && (
+              <button 
+                onClick={() => setShowWarningsModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-[10px] font-black uppercase border border-amber-200 animate-soft-fade shadow-sm hover:bg-amber-100 transition-all"
+              >
+                  <Info size={14} /> OBS ({assignmentWarnings.length})
+              </button>
+          )}
+          <button onClick={() => setShowHistoryModal(true)} className={`flex items-center gap-2 px-4 py-2 bg-white ${c.text} border ${c.border} ${buttonRoundClass} font-bold hover:bg-slate-50 transition-all shadow-sm`}>
+            <History size={20} /> Sidste uge
+          </button>
           <button onClick={() => setShowHelp(true)} className={`flex items-center gap-2 px-4 py-2 bg-white text-slate-500 border border-slate-200 ${buttonRoundClass} font-medium hover:bg-slate-50 transition-all shadow-sm`}>
             <HelpCircle size={20} /> Vejledning
           </button>
@@ -476,7 +725,6 @@ const App = () => {
                   </div>
                   <div className="p-8 space-y-8 max-h-[80vh] overflow-y-auto custom-scrollbar">
                       
-                      {/* Teknisk Sektion */}
                       <section className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
                           <h3 className="font-black text-lg flex items-center gap-2 text-slate-800 border-b-2 pb-2 border-slate-200"><MousePointer2 size={20} className={c.text}/> Teknisk Brugervejledning</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm text-slate-600 leading-relaxed">
@@ -489,47 +737,43 @@ const App = () => {
                               <div className="space-y-3">
                                   <p><strong>5. Manuelt valg & Lås:</strong> Du kan vælge en elev manuelt i drop-down menuen og derefter trykke på 🔓 for at låse dem fast, før du trykker 'Bland elever' for resten.</p>
                                   <p><strong>6. Backup:</strong> Dine data gemmes i din browser. Brug <strong>'Backup'</strong> i indstillinger til at gemme en fil, så du aldrig mister dine opsætninger.</p>
-                                  <p><strong>7. Historik:</strong> Systemet husker hvem der havde opgaven sidst (hver gang du trykker på **Print**) og undgår så vidt muligt gengangere ugen efter.</p>
+                                  <p><strong>7. Historik:</strong> Systemet husker hvem der havde opgaven sidst og undgår gengangere. Dette sker automatisk hver mandag, eller manuelt via knappen <strong>'Sidste uge'</strong>.</p>
                               </div>
                           </div>
                       </section>
 
-                      {/* Ny Sektion: Makkerskaber */}
-                      <section className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                          <h3 className="font-black text-lg flex items-center gap-2 text-slate-800 border-b-2 pb-2 border-slate-200"><Users2 size={20} className={c.text}/> Makkerskaber & Udelukkelser</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm text-slate-600 leading-relaxed">
-                              <div className="space-y-3">
-                                  <p><strong>Faste makkere:</strong> Under indstillinger kan du binde to elever sammen. Hvis den ene elev trækkes til en tjans, følger den faste makker altid automatisk med.</p>
+                      <section className="space-y-4 bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
+                          <h3 className="font-black text-lg flex items-center gap-2 text-indigo-900 border-b-2 pb-2 border-indigo-200"><Users2 size={20} className="text-indigo-600"/> Makkerskaber & Udelukkelser</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm text-slate-600 leading-relaxed">
+                              <div>
+                                  <p className="font-bold text-indigo-900 mb-1">Faste makkere:</p>
+                                  <p>Under indstillinger kan du binde to elever sammen. Hvis den ene elev trækkes til en tjans, følger den faste makker altid automatisk med for at skabe social tryghed.</p>
                               </div>
-                              <div className="space-y-3">
-                                  <p><strong>Aldrig sammen:</strong> Definer par som aldrig må arbejde sammen. Systemet vil sikre, at disse to elever aldrig bliver parret i en lodtrækning.</p>
+                              <div>
+                                  <p className="font-bold text-red-900 mb-1">Aldrig sammen:</p>
+                                  <p>Definer par som aldrig må arbejde sammen. Systemet vil sikre, at disse to elever aldrig bliver parret i en lodtrækning.</p>
                               </div>
                           </div>
                       </section>
 
-                      {/* Pædagogisk Sektion */}
-                      <section className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                      <section className="space-y-6 p-2">
                           <h3 className="font-black text-lg flex items-center gap-2 text-slate-800 border-b-2 pb-2 border-slate-200"><Lightbulb size={20} className="text-amber-500"/> Pædagogiske Tanker & Valg</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-xs leading-relaxed text-slate-600">
-                              <div className="space-y-4">
-                                  <div>
-                                      <h4 className="font-bold uppercase text-slate-800 mb-1 flex items-center gap-1"><UserCircle2 size={14}/> Social Tryghed via Roller</h4>
-                                      <p>Neurodivergerende elever bruger ofte energi på social forhandling. Ved at definere faste <strong>Roller</strong> fjerner vi denne forhandling og skaber ro i makkerskabet.</p>
-                                  </div>
-                                  <div>
-                                      <h4 className="font-bold uppercase text-slate-800 mb-1 flex items-center gap-1"><CheckCircle2 size={14}/> The Power of Done (Mål)</h4>
-                                      <p>Mange elever ved ikke, hvornår en opgave er slut. <strong>'Målet'</strong> fungerer som et konkret stoppunkt, der gør det muligt at afslutte aktiviteten.</p>
-                                  </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-2">
+                                  <h4 className="font-bold text-slate-700 flex items-center gap-2"><ShieldCheck size={18} className="text-emerald-500"/> Social Tryghed via Roller</h4>
+                                  <p className="text-xs text-slate-500 leading-relaxed">Neurodivergerende elever bruger ofte energi på social forhandling. Ved at definere faste Roller fjerner vi denne forhandling og skaber ro i makkerskabet.</p>
                               </div>
-                              <div className="space-y-4">
-                                  <div>
-                                      <h4 className="font-bold uppercase text-slate-800 mb-1 flex items-center gap-1"><Shuffle size={14}/> Arousal & Animation</h4>
-                                      <p>Visuel flimren kan skabe angst. Muligheden for <strong>Rolige Animationer</strong> (Spinner/Puls) sikrer, at skiftet bliver en rolig og faktuel oplysning.</p>
-                                  </div>
-                                  <div>
-                                      <h4 className="font-bold uppercase text-slate-800 mb-1 flex items-center gap-1"><Palette size={14}/> Visuel Ro & Struktur</h4>
-                                      <p>Farvetemaer og valg af former hjælper med at skabe de skarpe og forudsigelige rammer, som mange elever trives bedst med.</p>
-                                  </div>
+                              <div className="space-y-2">
+                                  <h4 className="font-bold text-slate-700 flex items-center gap-2"><Target size={18} className="text-blue-500"/> The Power of Done (Mål)</h4>
+                                  <p className="text-xs text-slate-500 leading-relaxed">Mange elever ved ikke, hvornår en opgave er slut. 'Målet' fungerer som et konkret stoppunkt, der gør det muligt at afslutte aktiviteten med succes.</p>
+                              </div>
+                              <div className="space-y-2">
+                                  <h4 className="font-bold text-slate-700 flex items-center gap-2"><Zap size={18} className="text-amber-500"/> Arousal & Animation</h4>
+                                  <p className="text-xs text-slate-500 leading-relaxed">Visuel flimren kan skabe angst. Muligheden for Rolige Animationer (Spinner/Puls) sikrer, at skiftet bliver en rolig og faktuel oplysning.</p>
+                              </div>
+                              <div className="space-y-2">
+                                  <h4 className="font-bold text-slate-700 flex items-center gap-2"><Layout size={18} className="text-purple-500"/> Visuel Ro & Struktur</h4>
+                                  <p className="text-xs text-slate-500 leading-relaxed">Farvetemaer og valg af former hjælper med at skabe de skarpe og forudsigelige rammer, som mange elever trives bedst med.</p>
                               </div>
                           </div>
                       </section>
@@ -546,8 +790,8 @@ const App = () => {
         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6 print-grid">
           {tasks.map((task) => (
             <div key={task.id} className={`${theme === 'night' ? 'bg-slate-800 text-white' : 'bg-white'} ${roundClass} shadow-sm ${highContrast ? 'border-4 border-black' : `border-2 ${task.isGlobal ? c.border : task.priority ? 'border-amber-200' : 'border-slate-100'}`} overflow-hidden flex flex-col transition-all duration-300 relative print-card`}>
-              <div className={`p-4 flex items-center justify-between ${task.isGlobal ? c.light : task.priority ? 'bg-amber-50/50' : c.light} print-card-header`}>
-                <div className="flex items-center gap-4 flex-1">
+              <div className={`p-4 flex ${isEditMode ? 'flex-col items-stretch gap-4' : 'items-center justify-between'} ${task.isGlobal ? c.light : task.priority ? 'bg-amber-50/50' : c.light} print-card-header`}>
+                <div className={`flex items-center gap-4 ${isEditMode ? 'w-full' : 'flex-1'}`}>
                   {isEditMode && (
                     <div className="flex flex-col gap-0.5 no-print mr-1">
                       <button onClick={() => moveTask(task.id, 'up')} className="text-slate-400 hover:text-indigo-500 transition-colors p-0.5"><ChevronUp size={16} /></button>
@@ -567,14 +811,14 @@ const App = () => {
                           value={task.name} 
                           onChange={(e) => updateTask(task.id, { name: e.target.value })}
                           placeholder="Navn på tjans..."
-                          className={`text-xl font-bold bg-transparent border-b border-dashed ${c.border} focus:outline-none w-full ${theme === 'night' ? 'text-slate-100' : 'text-slate-700'}`}
+                          className={`text-xl font-bold bg-white/50 px-2 py-1 rounded border-b-2 border-dashed ${c.border} focus:outline-none w-full ${theme === 'night' ? 'text-slate-100 bg-slate-700/50' : 'text-slate-700'}`}
                         />
                         <input 
                           type="text" 
                           value={task.goal || ""} 
                           onChange={(e) => updateTask(task.id, { goal: e.target.value })}
                           placeholder="Mål (f.eks. 'Bordene er tørre')..."
-                          className={`text-[10px] italic bg-transparent border-b border-dashed border-slate-300 focus:outline-none w-full mt-1 ${theme === 'night' ? 'text-slate-400' : 'text-slate-500'}`}
+                          className={`text-xs italic bg-white/30 px-2 py-1 rounded border-b border-dashed border-slate-300 focus:outline-none w-full mt-2 ${theme === 'night' ? 'text-slate-400 bg-slate-700/30' : 'text-slate-500'}`}
                         />
                       </>
                     ) : (
@@ -586,10 +830,20 @@ const App = () => {
                   </div>
                 </div>
                 {isEditMode && (
-                  <div className="flex items-center gap-1 no-print text-slate-400 ml-2">
-                    <button onClick={() => updateTask(task.id, { isGlobal: !task.isGlobal })} className={`p-2 rounded-lg ${task.isGlobal ? `${c.text} ${c.light}` : 'hover:text-indigo-500'}`} title="Skift til tekstfelt"><Users2 size={18} /></button>
-                    <button onClick={() => updateTask(task.id, { priority: !task.priority })} className={`p-2 rounded-lg ${task.priority ? 'text-amber-500 bg-amber-100' : 'hover:text-amber-400'}`} title="Marker som vigtig"><Star size={18} fill={task.priority ? "currentColor" : "none"} /></button>
-                    <button onClick={() => { if(confirm('Slet tjans?')) setTasks(tasks.filter(t => t.id !== task.id)); }} className="hover:text-red-500 p-2" title="Slet"><X size={18} /></button>
+                  <div className="flex items-center justify-end gap-2 no-print text-slate-400 pt-3 border-t border-slate-200/50">
+                    <button onClick={() => updateTask(task.id, { isGlobal: !task.isGlobal })} className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${task.isGlobal ? `${c.text} ${c.light} ring-1 ring-current` : 'hover:bg-slate-50'}`} title="Skift til tekstfelt">
+                        <Users2 size={16} /> {task.isGlobal ? 'Frit felt' : 'Elever'}
+                    </button>
+                    <button onClick={() => updateTask(task.id, { singleSlot: !task.singleSlot })} className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${task.singleSlot ? `${c.text} ${c.light} ring-1 ring-current` : 'hover:bg-slate-50'}`} title="Enkelt elev">
+                        <User size={16} /> {task.singleSlot ? '1 elev' : '2 elever'}
+                    </button>
+                    <button onClick={() => updateTask(task.id, { priority: !task.priority })} className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${task.priority ? 'text-amber-600 bg-amber-50 ring-1 ring-amber-200' : 'hover:bg-slate-50'}`} title="Marker som vigtig">
+                        <Star size={16} fill={task.priority ? "currentColor" : "none"} /> Vigtig
+                    </button>
+                    <div className="flex-1"></div>
+                    <button onClick={() => { if(confirm('Slet tjans?')) setTasks(tasks.filter(t => t.id !== task.id)); }} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-bold uppercase text-red-400 hover:bg-red-50 transition-all" title="Slet">
+                        <X size={16} /> Slet
+                    </button>
                   </div>
                 )}
               </div>
@@ -607,7 +861,7 @@ const App = () => {
                   <div className="flex justify-between items-center pt-3 border-t border-slate-100">
                     <button onClick={() => setIconPages(prev => ({...prev, [task.id]: Math.max(0, (prev[task.id] || 0) - 1)}))} disabled={(iconPages[task.id] || 0) === 0} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${(iconPages[task.id] || 0) === 0 ? 'text-slate-200 bg-slate-50 cursor-not-allowed' : 'text-slate-500 bg-slate-100 hover:bg-slate-200 active:scale-95'}`}>Forrige</button>
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Side {(iconPages[task.id] || 0) + 1} / {Math.ceil(AVAILABLE_ICONS.length / ICONS_PER_PAGE)}</span>
-                    <button onClick={() => setIconPages(prev => ({...prev, [task.id]: Math.min(Math.ceil(AVAILABLE_ICONS.length / ICONS_PER_PAGE) - 1, (prev[task.id] || 0) + 1)}))} disabled={((iconPages[task.id] || 0) + 1) * ICONS_PER_PAGE >= AVAILABLE_ICONS.length} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all [((iconPages[task.id] || 0) + 1) * ICONS_PER_PAGE >= AVAILABLE_ICONS.length] ? 'text-slate-200 bg-slate-50 cursor-not-allowed' : 'text-slate-500 bg-slate-100 hover:bg-slate-200 active:scale-95'}`}>Næste</button>
+                    <button onClick={() => setIconPages(prev => ({...prev, [task.id]: Math.min(Math.ceil(AVAILABLE_ICONS.length / ICONS_PER_PAGE) - 1, (prev[task.id] || 0) + 1)}))} disabled={((iconPages[task.id] || 0) + 1) * ICONS_PER_PAGE >= AVAILABLE_ICONS.length} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${((iconPages[task.id] || 0) + 1) * ICONS_PER_PAGE >= AVAILABLE_ICONS.length ? 'text-slate-200 bg-slate-50 cursor-not-allowed' : 'text-slate-500 bg-slate-100 hover:bg-slate-200 active:scale-95'}`}>Næste</button>
                   </div>
                 </div>
               )}
@@ -619,7 +873,7 @@ const App = () => {
                         <div className={`hidden print-student-name p-3 border-2 border-dashed ${c.border} ${buttonRoundClass} ${c.light} text-center font-black text-2xl min-h-[50px] flex items-center justify-center ${c.text} ${highContrast ? 'border-black border-solid text-black' : ''}`}>{assignments[task.id]?.[0] || "ALLE ELEVER"}</div>
                     </div>
                 ) : (
-                    [0, 1].map((slot) => {
+                    [0, 1].filter(slot => slot === 0 || !task.singleSlot).map((slot) => {
                         const s = isShuffling ? tempNames[task.id]?.[slot] : assignments[task.id]?.[slot];
                         const lock = lockedSlots[`${task.id}-${slot}`];
                         const role = slot === 0 ? task.role1 : task.role2;
@@ -631,35 +885,56 @@ const App = () => {
                                   type="text" 
                                   value={role || ""} 
                                   onChange={(e) => updateTask(task.id, slot === 0 ? {role1: e.target.value} : {role2: e.target.value})}
-                                  placeholder={`Rolle ${slot + 1}...`}
+                                  placeholder={task.singleSlot ? "Opgave..." : `Rolle ${slot + 1}...`}
                                   className="bg-transparent border-b border-dashed border-slate-200 focus:outline-none focus:border-indigo-400 w-24"
                                 />
                               ) : (
-                                <span>{role || `Makker ${slot + 1}`}</span>
+                                <span>{role || (task.singleSlot ? "Elev" : `Makker ${slot + 1}`)}</span>
                               )}
-                              <button onClick={() => { const k = `${task.id}-${slot}`; const nl = {...lockedSlots, [k]: !lockedSlots[k]}; setLockedSlots(nl); saveToLocalStorage({lockedSlots: nl}); }} className={`p-1 rounded-md transition-all ${lock ? `${c.text} ${c.light}` : 'text-slate-300 hover:text-slate-400'}`}>{lock ? <Lock size={10} /> : <Unlock size={10} />}</button>
+                              <button onClick={() => toggleLock(task.id, slot)} className={`p-1 rounded-md transition-all ${lock ? `${c.text} ${c.light}` : 'text-slate-300 hover:text-slate-400'}`}>{lock ? <Lock size={10} /> : <Unlock size={10} />}</button>
                             </div>
                             <div className="no-print relative">
                               <div className={`w-full p-3 ${buttonRoundClass} border-2 text-sm transition-all flex items-center justify-center min-h-[44px] ${
                                 isShuffling 
-                                ? (animationType === 'spinner' ? 'bg-slate-50 border-slate-200' : animationType === 'pulse' ? 'bg-indigo-50 border-indigo-200 animate-calm-pulse' : 'bg-slate-100 border-slate-200')
+                                ? (lock ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-bold' : (animationType === 'spinner' ? 'bg-slate-50 border-slate-200' : animationType === 'pulse' ? 'bg-indigo-50 border-indigo-200 animate-calm-pulse' : 'bg-slate-100 border-slate-200'))
                                 : s ? `bg-emerald-50 border-emerald-200 text-emerald-800 font-bold ${animationType === 'fade' ? 'animate-soft-fade' : ''}` 
                                 : `${theme === 'night' ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'} border-dashed text-slate-400`
                               } ${lock ? `border-indigo-300` : ''} ${highContrast ? 'border-black border-solid' : ''}`}>
-                                {isShuffling ? (
+                                {isShuffling && !lock ? (
                                     animationType === 'spinner' ? <Loader2 className="animate-spin text-indigo-400" size={18} /> : 
-                                    animationType === 'classic' ? <span className="text-indigo-600">{s}</span> :
+                                    animationType === 'classic' ? <span className="text-indigo-600 font-bold">{s}</span> :
+                                    animationType === 'rocket' ? <div className="flex flex-col items-center"><Rocket className="animate-rocket text-white" size={24} /><span className="text-[8px] mt-1 text-white font-black uppercase tracking-tighter">Launching...</span></div> :
+                                    animationType === 'dice' ? (
+                                        <div className="h-8 overflow-hidden relative w-full flex items-center justify-center">
+                                            <div className="animate-slot-roll flex flex-col items-center gap-2">
+                                                {students.slice(0, 5).map((st, idx) => <span key={idx} className="text-xs font-black text-emerald-600 uppercase">{st}</span>)}
+                                                {students.slice(0, 5).map((st, idx) => <span key={idx+'_2'} className="text-xs font-black text-emerald-600 uppercase">{st}</span>)}
+                                            </div>
+                                        </div>
+                                    ) :
+                                    animationType === 'ghost' ? <div className="flex flex-col items-center relative"><Ghost className="animate-spooky text-slate-300" size={24} /><span className="absolute -top-2 -right-4 text-[10px] font-black text-slate-400 animate-bounce">BOO!</span><span className="text-[10px] mt-1 text-slate-500 font-bold blur-[0.5px]">{s}</span></div> :
+                                    animationType === 'magic' ? <div className="flex flex-col items-center"><Wand2 className="animate-magic" size={24} style={{ color: '#fbbf24' }} /><span className="text-[8px] mt-1 text-amber-500 font-black uppercase">Abracadabra...</span></div> :
+                                    animationType === 'pulse' ? <Heart className="animate-calm-pulse text-rose-400" size={24} /> :
+                                    animationType === 'fade' ? <Sparkles className="animate-pulse text-sky-400" size={24} /> :
                                     <Shuffle className="text-indigo-300" size={18} />
                                 ) : (
-                                    <select value={s || ''} onChange={(e) => { const up = {...assignments, [task.id]: assignments[task.id].map((v, i) => i === slot ? e.target.value : v)}; setAssignments(up); saveToLocalStorage({assignments: up}); }} className="bg-transparent w-full text-center appearance-none focus:outline-none cursor-pointer">
-                                        <option value="">—</option>
-                                        {students.sort((a,b) => a.localeCompare(b)).map(st => <option key={st} value={st}>{st}</option>)}
-                                    </select>
+                                    <div className="relative w-full group">
+                                        <select value={s || ''} disabled={isShuffling && lock} onChange={(e) => handleManualAssignment(task.id, slot, e.target.value)} className="bg-transparent w-full text-center appearance-none focus:outline-none cursor-pointer">
+                                            <option value="">—</option>
+                                            {students.sort((a,b) => a.localeCompare(b)).map(st => <option key={st} value={st}>{st}</option>)}
+                                        </select>
+                                        {isEditMode && s && !isShuffling && (
+                                            <div className="absolute -bottom-5 left-0 right-0 flex justify-center gap-1 no-print pointer-events-none">
+                                                {getBuddies(s).map(b => <div key={b} className="bg-indigo-500 text-white p-0.5 rounded-full shadow-sm" title={`Makker: ${b}`}><Users2 size={8}/></div>)}
+                                                {getExclusions(s).map(ex => <div key={ex} className="bg-red-500 text-white p-0.5 rounded-full shadow-sm" title={`Udelukker: ${ex}`}><UserMinus size={8}/></div>)}
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                               </div>
                             </div>
                             <div className={`hidden print-student-name p-3 border-2 border-slate-100 ${buttonRoundClass} bg-slate-50 text-center font-bold text-xl min-h-[50px] flex flex-col items-center justify-center text-slate-700 print-student-name`}>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">{role || `Makker ${slot + 1}`}</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">{role || (task.singleSlot ? "Elev" : `Makker ${slot + 1}`)}</span>
                                 {s || "—"}
                             </div>
                           </div>
@@ -688,13 +963,25 @@ const App = () => {
                 </button>
               </div>
             </h2>
-            <div className={`space-y-1 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar ${theme === 'night' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-xl p-2 border ${theme === 'night' ? 'border-slate-700' : 'border-slate-200'}`}>
-              {students.sort((a,b) => a.localeCompare(b)).map((n) => (
-                <div key={n} className={`flex items-center justify-between p-2 rounded-lg hover:bg-white/10 text-sm font-bold ${theme === 'night' ? 'text-slate-300' : 'text-slate-700'}`}>
-                    <span>{n}</span>
-                    {isEditingClass && <button onClick={() => { const nl = students.filter(s => s !== n); setStudents(nl); saveToLocalStorage({ students: nl }); }} className="text-slate-400 hover:text-red-500 transition-colors"><X size={16} /></button>}
-                </div>
-              ))}
+            <div className={`space-y-1 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar ${theme === 'night' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-xl p-2 border ${theme === 'night' ? 'border-slate-700' : 'border-slate-200'}`}>
+              {students.sort((a,b) => a.localeCompare(b)).map((n) => {
+                const buddy = getBuddy(n);
+                const exclusions = getExclusions(n);
+                return (
+                  <div key={n} className={`flex items-center justify-between p-2 rounded-lg hover:bg-white/10 text-sm font-bold ${theme === 'night' ? 'text-slate-300' : 'text-slate-700'}`}>
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate">{n}</span>
+                        {isEditMode && (buddy || exclusions.length > 0) && (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                                {buddy && <div className="flex items-center gap-0.5 text-[7px] bg-indigo-50 text-indigo-500 px-1 rounded border border-indigo-100 uppercase" title={`Makker: ${buddy}`}><Users2 size={8}/> {buddy}</div>}
+                                {exclusions.map(ex => <div key={ex} className="flex items-center gap-0.5 text-[7px] bg-red-50 text-red-400 px-1 rounded border border-red-100 uppercase" title={`Må ikke være sammen med: ${ex}`}><UserMinus size={8}/> {ex}</div>)}
+                            </div>
+                        )}
+                      </div>
+                      {isEditingClass && <button onClick={() => { const nl = students.filter(s => s !== n); setStudents(nl); saveToLocalStorage({ students: nl }); setNewStudentName(''); }} className="text-slate-400 hover:text-red-500 transition-colors ml-2"><X size={16} /></button>}
+                  </div>
+                );
+              })}
             </div>
             <div className={`mt-4 pt-4 border-t-2 ${theme === 'night' ? 'border-slate-700' : 'border-slate-200'}`}>
                 <form onSubmit={(e) => { e.preventDefault(); if (newStudentName.trim() && !students.includes(newStudentName.trim())) { const nl = [...students, newStudentName.trim()]; setStudents(nl); saveToLocalStorage({ students: nl }); setNewStudentName(''); } }} className={`flex gap-2 ${theme === 'night' ? 'bg-slate-700' : 'bg-white'} p-1 rounded-lg border ${theme === 'night' ? 'border-slate-600' : 'border-slate-300'}`}>
@@ -783,7 +1070,11 @@ const App = () => {
                                         {id: 'classic', icon: Zap, label: 'Flimmer'},
                                         {id: 'spinner', icon: Loader, label: 'Spinner'},
                                         {id: 'fade', icon: Sparkles, label: 'Indfase'},
-                                        {id: 'pulse', icon: Heart, label: 'Puls'}
+                                        {id: 'pulse', icon: Heart, label: 'Puls'},
+                                        {id: 'rocket', icon: Rocket, label: 'Raket'},
+                                        {id: 'dice', icon: Dice5, label: 'Tromle'},
+                                        {id: 'ghost', icon: Ghost, label: 'Spøgelse'},
+                                        {id: 'magic', icon: Wand2, label: 'Magi'}
                                     ].map(a => (
                                         <button key={a.id} type="button" onClick={() => {setAnimationType(a.id); saveToLocalStorage({animationType: a.id});}} className={`flex items-center gap-1 p-1.5 text-[9px] font-black uppercase border rounded-md transition-all ${animationType === a.id ? `${c.primary} text-white border-transparent` : 'bg-white text-slate-400 border-slate-200'}`}>
                                             <a.icon size={10}/> {a.label}
@@ -809,7 +1100,63 @@ const App = () => {
         </div>
       </div>
 
-      {/* Add Task Modal */}
+      {/* History Modal */}
+      {showHistoryModal && (
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[110] p-4 no-print backdrop-blur-sm">
+              <div className={`bg-white ${roundClass} shadow-2xl max-w-2xl w-full overflow-hidden text-slate-800 animate-soft-fade`}>
+                  <div className={`${c.primary} p-6 flex justify-between items-center text-white`}>
+                      <h2 className="text-xl font-bold flex items-center gap-2"><History /> Tidligere tildelinger</h2>
+                      <button onClick={() => setShowHistoryModal(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors"><X /></button>
+                  </div>
+                  <div className="p-8 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                          Her kan du se hvilke elever, der havde opgaverne i sidste uge. Systemet bruger disse data til automatisk at undgå gengangere.
+                      </p>
+                      <div className="flex justify-end mb-2">
+                          <button 
+                            onClick={() => {
+                                const archivedHistory = { ...history };
+                                Object.keys(assignments).forEach(tid => {
+                                    const task = tasks.find(t => t.id === tid);
+                                    if (task && !task.isGlobal) {
+                                        archivedHistory[tid] = (assignments[tid] || []).filter(s => s && s !== "");
+                                    }
+                                });
+                                setHistory(archivedHistory);
+                                saveToLocalStorage({ history: archivedHistory });
+                                showToast("Nuværende plan er nu gemt som historik!");
+                            }}
+                            className={`px-3 py-1.5 ${c.light} ${c.text} border ${c.border} rounded-lg text-[10px] font-black uppercase hover:bg-white transition-all shadow-sm flex items-center gap-2`}
+                          >
+                              <Archive size={14} /> Arkiver denne uge manuelt
+                          </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {tasks.filter(t => !t.isGlobal).map(task => (
+                              <div key={task.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                  <div className="flex items-center gap-2 mb-2">
+                                      {renderIcon(task.icon, 16)}
+                                      <span className="font-bold text-sm text-slate-700">{task.name}</span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1">
+                                      {(history[task.id] || []).length > 0 ? (
+                                          history[task.id].map(s => <span key={s} className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[10px] font-medium text-slate-500">{s}</span>)
+                                      ) : (
+                                          <span className="text-[10px] italic text-slate-400">Ingen data gemt</span>
+                                      )}
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                      <div className="pt-4 flex justify-between gap-4">
+                          <button onClick={() => { if(confirm('Vil du slette al historik? Dette kan ikke fortrydes.')) { setHistory({}); saveToLocalStorage({history: {}}); } }} className="text-xs text-red-400 hover:text-red-600 font-bold uppercase tracking-wider">Nulstil historik</button>
+                          <button onClick={() => setShowHistoryModal(false)} className={`py-3 px-8 ${c.primary} text-white font-bold ${buttonRoundClass} hover:opacity-90 transition-all shadow-lg`}>Luk</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {isAddTaskModalOpen && (
           <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] p-4 no-print backdrop-blur-sm">
               <div className={`bg-white ${roundClass} shadow-2xl max-w-md w-full overflow-hidden text-slate-800 animate-soft-fade`}>
@@ -845,6 +1192,46 @@ const App = () => {
                           <button type="submit" disabled={!newTaskName.trim()} className={`flex-1 py-4 px-6 ${c.primary} text-white ${buttonRoundClass} font-bold hover:opacity-90 transition-all uppercase tracking-widest text-xs shadow-lg disabled:opacity-50`}>Opret tjans</button>
                       </div>
                   </form>
+              </div>
+          </div>
+      )}
+
+      {/* Assignment Info Modal */}
+      {showWarningsModal && (
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[110] p-4 no-print backdrop-blur-sm">
+              <div className={`bg-white ${roundClass} shadow-2xl max-w-md w-full overflow-hidden text-slate-800 animate-soft-fade`}>
+                  <div className={`${c.primary} p-6 flex justify-between items-center text-white`}>
+                      <h2 className="text-xl font-bold flex items-center gap-2"><Info /> OBS</h2>
+                      <button onClick={() => setShowWarningsModal(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors"><X /></button>
+                  </div>
+                  <div className="p-8 space-y-4">
+                      <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                          Systemet har gjort følgende for at få planen til at gå op:
+                      </p>
+                      <div className="space-y-2">
+                          {assignmentWarnings.map((warning, i) => (
+                              <div key={i} className="flex gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100 text-xs text-slate-700">
+                                  <div className="text-indigo-500 mt-0.5">•</div>
+                                  <span>{warning}</span>
+                              </div>
+                          ))}
+                      </div>
+                      <button onClick={() => setShowWarningsModal(false)} className={`w-full mt-4 py-3 ${c.primary} text-white font-bold ${buttonRoundClass} hover:opacity-90 transition-all`}>
+                          Det er modtaget
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] no-print animate-soft-fade">
+              <div className={`px-6 py-3 rounded-2xl shadow-2xl border-2 flex items-center gap-3 ${
+                  toast.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-slate-200 text-slate-700'
+              }`}>
+                  {toast.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle2 className={c.text} size={20} />}
+                  <span className="font-bold text-sm">{toast.message}</span>
               </div>
           </div>
       )}
