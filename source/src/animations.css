@@ -4,14 +4,15 @@
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     body { background-color: white !important; color: black !important; padding: 0 !important; margin: 0 !important; }
     .no-print { display: none !important; }
-    .print-grid { display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 1rem !important; width: 100% !important; }
+    .print-container { display: block !important; width: 100% !important; margin: 0 auto !important; }
+    .print-grid { display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 1.5rem !important; width: 100% !important; }
     .print-card { 
         break-inside: avoid; 
         background-color: white !important; 
         box-shadow: none !important;
     }
     .print-card-header { border-bottom: 1px solid #e2e8f0 !important; }
-    .print-student-name { border: 2px solid #e2e8f0 !important; background-color: #f8fafc !important; color: black !important; font-weight: bold !important; }
+    .print-student-name { display: flex !important; border: 2px solid #e2e8f0 !important; background-color: #f8fafc !important; color: black !important; font-weight: bold !important; }
 }
 
 @keyframes softFade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
