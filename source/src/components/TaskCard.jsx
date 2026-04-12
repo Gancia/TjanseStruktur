@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   ChevronUp, ChevronDown, Users2, User, Star, X, Lock, Unlock, 
   Loader2, Rocket, Dice5, Ghost, Wand2, Heart, Sparkles, Shuffle,
-  Layout
+  Layout, UserMinus
 } from 'lucide-react';
 
 const TaskCard = ({ 
