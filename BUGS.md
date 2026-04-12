@@ -1,22 +1,48 @@
-# Kendte Bugs og Forbedringspunkter (Dukse-appen)
+# Status på TjanseStruktur (April 2026)
 
-Herunder findes en oversigt over de tekniske "sniger-bugs", der er identificeret i den nuværende version af applikationen.
+Dette dokument opsummerer den tekniske status efter den store arkitektoniske oprydning og refakturering.
 
-## 1. Individuel prioriterings-bias (Bias i tildelingsrækkefølge)
-**Beskrivelse:** Selvom makkerpar nu fordeles tilfældigt, bliver de enkelte elever (individer) tildelt i en fast rækkefølge til de resterende pladser.
-**Konsekvens:** De opgaver, der står øverst på listen, har statistisk set en højere chance for at få "friske" elever (dem, der ikke havde opgaven sidst), mens opgaverne nederst på listen oftere må nøjes med gengangere eller elever fra backup-puljen.
+## ✅ Løste Udfordringer (Resolved)
 
-## 2. Manuelle dubletter (Manglende validering)
-**Beskrivelse:** Ved manuel tildeling via drop-down menuen tjekker systemet ikke, om en elev allerede er tildelt en anden opgave.
-**Konsekvens:** En bruger kan ved en fejl låse den samme elev til flere forskellige opgaver manuelt. Systemet giver ingen advarsel om dette i selve redigeringstilstanden, hvilket kan føre til fejl i den endelige plan.
+### 1. Statistisk Prioriterings-bias
+- **Problem:** De øverste opgaver i listen fik altid de "friske" elever fra puljen, mens de nederste fik gengangere eller rester.
+- **Løsning:** Opgaverne blandes nu internt i logikken, før tildelingen starter. Dette sikrer en fair og jævn fordeling af elever på tværs af alle tjanser.
 
-## 3. Den "glemte" uge (Session-problematik)
-**Beskrivelse:** Den automatiske arkivering til historik sker kun ved indlæsning af siden (`useEffect`). 
-**Konsekvens:** Hvis appen står åben på en iPad eller computer natten over (f.eks. fra søndag til mandag), vil den ikke opdage, at ugenummeret er skiftet. Brugeren risikerer at overskrive den nye uges data i den gamle uges "slot" i hukommelsen. En manuel genindlæsning er påkrævet for at aktivere ugeskiftet.
+### 2. Manuelle Dubletter
+- **Problem:** Brugeren kunne ved en fejl tildele den samme elev til flere opgaver manuelt.
+- **Løsning:** Der er nu indbygget et advarselssystem (Toast), der popper op, hvis man vælger en elev, der allerede har en anden tjans.
 
-## 4. Makkere i "trekant-drama" (Konfliktende parringer)
-**Beskrivelse:** Hvis en elev i indstillingerne tildeles to forskellige faste makkere (f.eks. "Sofie + Lukas" og "Sofie + Emma"), kan algoritmen kun håndtere én af parringerne.
-**Konsekvens:** Systemet vil altid vælge det par, der står først i listen over `pairedStudents`. Den anden parring vil blive ignoreret af logikken, hvilket kan skabe forvirring hos brugeren, der forventer at se begge parringer overholdt.
+### 3. "Flimmer" i Animationer
+- **Problem:** Spøgelses-tekster og navne i visse animationer skiftede så hurtigt, at det kunne virke overstimulerende.
+- **Løsning:** 
+  - **Spøgelset:** Vælger nu ét tilfældigt ord per lodtrækning og holder fast i det.
+  - **Indfase (Fade):** Er gjort ultra-rolig; viser kun diskrete pulserende prikker undervejs og fader navnet ind til sidst.
+
+### 4. Uge-synkronisering
+- **Problem:** Hvis appen stod åben på en skærm over en weekend, opdagede den ikke ugeskiftet om mandagen.
+- **Løsning:** Der er tilføjet en baggrunds-lytter, der tjekker ugenummeret hver time og automatisk genindlæser/arkiverer historik, når det er relevant.
+
+### 5. Kode-skalerbarhed (Arkitektur)
+- **Problem:** `App.jsx` var blevet en gigantisk fil på 1.200 linjer, der var svær at fejlsøge i.
+- **Løsning:** Projektet er nu splittet op i logiske moduler:
+  - `useDukseLogic.js`: Hjernen (Logik & State).
+  - `TaskCard.jsx`, `Sidebar.jsx`, `Modals.jsx`: Kroppen (Visning).
+  - `animations.css` & `constants.js`: Design og data.
+
+---
+
+## 🚀 Nye Forbedringer & Navngivning
+For at gøre koden lettere at læse for dig fremadrettet, er animationerne omdøbt til mere sigende navne:
+- `dice` er blevet til **`slot`** (da det ligner en spillemaskine/tromle).
+- `classic` er blevet til **`flicker`** (da det beskriver navne-flimmeret).
+- Ubrugt kode (som "Spooky Eyes") er fjernet for at holde projektet slankt.
+
+---
+
+## 📋 Fremtidig Backlog (Idéer)
+*   **Drag-and-drop:** Mulighed for at flytte elever mellem opgaver med musen.
+*   **Flere farvetemaer:** Mulighed for at lave sine helt egne farvekombinationer.
+*   **Statistik-modul:** En oversigt der viser, hvem der har haft "Feje-tjansen" flest gange over et helt år.
 
 ---
 *Sidst opdateret: April 2026*
