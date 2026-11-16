@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+﻿import { useState, useEffect, useRef, useCallback } from 'react';
 
 const LOCAL_STORAGE_KEY = 'tjansestruktur-state-v15';
 
@@ -50,6 +50,7 @@ export const useDukseLogic = () => {
   const [countdown, setCountdown] = useState(null);
   const [shufflingTasks, setShufflingTasks] = useState(new Set());
   const [spookyText, setSpookyText] = useState('');
+  const [christmasText, setChristmasText] = useState('');
   
   const [toast, setToast] = useState(null);
   const toastTimeoutRef = useRef(null);
@@ -92,8 +93,8 @@ export const useDukseLogic = () => {
   const loadDefaults = () => {
     const defaultTasks = [
       { id: '1', name: 'Feje gulv', icon: 'Wind', priority: true, isGlobal: false, role1: 'Fejer', role2: 'Samler op', goal: 'Ingen krummer under bordene' },
-      { id: '2', name: 'Tørre borde af', icon: 'Eraser', priority: true, isGlobal: false, role1: 'Vasker', role2: 'Tørrer efter', goal: 'Bordene er tørre og rene' },
-      { id: '3', name: 'Sætte PC i skab', icon: 'Laptop', priority: false, isGlobal: true, goal: 'Alle computere i stik' },
+      { id: '2', name: 'TÃ¸rre borde af', icon: 'Eraser', priority: true, isGlobal: false, role1: 'Vasker', role2: 'TÃ¸rrer efter', goal: 'Bordene er tÃ¸rre og rene' },
+      { id: '3', name: 'SÃ¦tte PC i skab', icon: 'Laptop', priority: false, isGlobal: true, goal: 'Alle computere i stik' },
     ];
     const defaultStudents = ['Sofie', 'Lukas', 'Emma', 'Noah', 'Ida', 'Victor', 'Maja', 'Oliver'];
     setTasks(defaultTasks);
@@ -150,12 +151,12 @@ export const useDukseLogic = () => {
     setLoading(false);
   }, []);
 
-  // Bug Fix 3: Sørg for at ugeskift opdages selvom appen står åben
+  // Bug Fix 3: SÃ¸rg for at ugeskift opdages selvom appen stÃ¥r Ã¥ben
   useEffect(() => {
     const checkWeek = () => {
         const currentWeek = getISOWeek().toString();
         if (weekNumber !== currentWeek) {
-            window.location.reload(); // Enkel løsning: genindlæs for at trigge useEffect logikken
+            window.location.reload(); // Enkel lÃ¸sning: genindlÃ¦s for at trigge useEffect logikken
         }
     };
     const interval = setInterval(checkWeek, 3600000); // Tjek hver time
@@ -238,7 +239,7 @@ export const useDukseLogic = () => {
         };
         const wasHereLastWeek = (tid, student) => (history[tid] || []).map(s => s.trim()).includes(student.trim());
 
-        // Bug Fix 1: Bland opgaverne for at undgå bias
+        // Bug Fix 1: Bland opgaverne for at undgÃ¥ bias
         const priorityTasksList = shuffleArray(tasks.filter(t => t.priority && !t.isGlobal));
         const regularTasksList = shuffleArray(tasks.filter(t => !t.priority && !t.isGlobal));
 
@@ -323,16 +324,16 @@ export const useDukseLogic = () => {
             const backupPool = shuffleArray(students).filter(s => s !== partner);
             if (backupPool.length > 0) {
                 newAssignments[task.id][0] = backupPool[0];
-                rawWarnings.push(`${backupPool[0]} er sat på ${task.name} (genbrug) for at fylde opgaven.`);
+                rawWarnings.push(`${backupPool[0]} er sat pÃ¥ ${task.name} (genbrug) for at fylde opgaven.`);
             }
         });
 
         tasks.forEach(t => {
             if (t.isGlobal) return;
             const a = newAssignments[t.id] || [];
-            if (a[0] && wasHereLastWeek(t.id, a[0])) rawWarnings.push(`${a[0]} har fået ${t.name} to gange i træk.`);
-            if (a[1] && wasHereLastWeek(t.id, a[1])) rawWarnings.push(`${a[1]} har fået ${t.name} to gange i træk.`);
-            if (a[0] && a[1] && isExcluded(a[0], a[1])) rawWarnings.push(`${a[0]} og ${a[1]} er sat sammen på ${t.name} trods udelukkelse.`);
+            if (a[0] && wasHereLastWeek(t.id, a[0])) rawWarnings.push(`${a[0]} har fÃ¥et ${t.name} to gange i trÃ¦k.`);
+            if (a[1] && wasHereLastWeek(t.id, a[1])) rawWarnings.push(`${a[1]} har fÃ¥et ${t.name} to gange i trÃ¦k.`);
+            if (a[0] && a[1] && isExcluded(a[0], a[1])) rawWarnings.push(`${a[0]} og ${a[1]} er sat sammen pÃ¥ ${t.name} trods udelukkelse.`);
         });
 
         setAssignmentWarnings([...new Set(rawWarnings)]);
@@ -367,6 +368,9 @@ export const useDukseLogic = () => {
             if (currentAnim === 'magic') {
                 setActiveEffect('poof');
                 setTimeout(() => setActiveEffect(null), 1000);
+            } else if (currentAnim === 'christmas') {
+                setActiveEffect('christmas_finale');
+                setTimeout(() => setActiveEffect(null), 2600);
             }
         }
     };
@@ -391,9 +395,22 @@ export const useDukseLogic = () => {
             }, 600);
         }
 
+        if (animationType === 'christmas') {
+            setActiveEffect('christmas');
+            const xmasWords = [
+                'HO HO HO!',
+                'GLÃ†DELIG JUL!',
+                'NISSEMAGI!',
+                'RUDOLF VÃ†LGER!',
+                'JULEGAVER PÃ… VEJ!',
+                'SNE & JULEHYGGE!'
+            ];
+            setChristmasText(xmasWords[Math.floor(Math.random() * xmasWords.length)]);
+            duration = 5500;
+        }
         if (animationType === 'ghost') {
             setActiveEffect('spooky');
-            const words = ['Bøøøh!', 'Uh-uh...', 'Hvem der?', 'Er her nogen?', 'Gys!', 'Uhyggeligt...', 'Spøgelser!'];
+            const words = ['BÃ¸Ã¸Ã¸h!', 'Uh-uh...', 'Hvem der?', 'Er her nogen?', 'Gys!', 'Uhyggeligt...', 'SpÃ¸gelser!'];
             setSpookyText(words[Math.floor(Math.random() * words.length)]);
             duration = 5000;
         }
@@ -433,8 +450,8 @@ export const useDukseLogic = () => {
         });
         if (isAlreadyAssigned) {
             showToast(`${value} er allerede tildelt en anden opgave!`, "error");
-            // Vi tillader det stadig hvis brugeren insisterer (ved at vælge igen), eller vi kan stoppe det.
-            // Her vælger jeg at advare men lade dem gøre det.
+            // Vi tillader det stadig hvis brugeren insisterer (ved at vÃ¦lge igen), eller vi kan stoppe det.
+            // Her vÃ¦lger jeg at advare men lade dem gÃ¸re det.
         }
     }
 
@@ -504,7 +521,7 @@ export const useDukseLogic = () => {
     excludedPairs, setExcludedPairs, isAddTaskModalOpen, setIsAddTaskModalOpen,
     newStudentName, setNewStudentName, newTaskName, setNewTaskName, iconPages, setIconPages,
     tempNames, activeEffect, setActiveEffect, countdown, shufflingTasks, toast, showToast,
-    spookyText,
+    spookyText, christmasText,
     saveToLocalStorage, randomize, handleManualAssignment, toggleLock, updateTask, moveTask,
     getBuddy, getBuddies, getExclusions
   };

@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   ChevronUp, ChevronDown, Users2, User, Star, X, Lock, Unlock, 
   Loader2, Rocket, Dice5, Ghost, Wand2, Heart, Sparkles, Shuffle,
-  Layout, UserMinus
+  Layout, UserMinus, Gift, Snowflake
 } from 'lucide-react';
 
 const TaskCard = ({ 
@@ -121,7 +121,7 @@ const TaskCard = ({
                     <div className="no-print relative">
                       <div className={`w-full p-3 ${buttonRoundClass} border-2 text-sm transition-all flex items-center justify-center min-h-[44px] ${
                         isShuffling 
-                        ? (lock ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-bold' : (animationType === 'spinner' ? 'bg-slate-50 border-slate-200' : animationType === 'pulse' ? 'bg-indigo-50 border-indigo-200 animate-calm-pulse' : animationType === 'rocket' ? `bg-slate-900 border-indigo-500/50 shadow-inner overflow-hidden ${countdown === 0 ? 'animate-extreme-shake' : ''}` : 'bg-slate-100 border-slate-200'))
+                        ? (lock ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-bold' : (animationType === 'spinner' ? 'bg-slate-50 border-slate-200' : animationType === 'pulse' ? 'bg-indigo-50 border-indigo-200 animate-calm-pulse' : animationType === 'rocket' ? `bg-slate-900 border-indigo-500/50 shadow-inner overflow-hidden ${countdown === 0 ? 'animate-extreme-shake' : ''}` : animationType === 'christmas' ? 'bg-gradient-to-br from-red-700 via-rose-600 to-emerald-800 border-amber-300 text-white animate-christmas-card overflow-hidden relative' : 'bg-slate-100 border-slate-200'))
                         : s ? `bg-emerald-50 border-emerald-200 text-emerald-800 font-bold ${animationType === 'fade' ? 'animate-soft-fade' : ''}` 
                         : `${theme === 'night' ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'} border-dashed text-slate-400`
                       } ${lock ? `border-indigo-300` : ''} ${highContrast ? 'border-black border-solid' : ''}`}>
@@ -179,6 +179,16 @@ const TaskCard = ({
                                 </div>
                             ) :
                             animationType === 'magic' ? <div className="flex flex-col items-center"><Wand2 className="animate-magic" size={24} style={{ color: '#fbbf24' }} /><span className="text-[8px] mt-1 text-amber-500 font-black uppercase">Abracadabra...</span></div> :
+                            animationType === 'christmas' ? (
+                                <div className="flex flex-col items-center relative w-full py-0.5">
+                                    <div className="flex items-center gap-1.5">
+                                        <Snowflake className="animate-spin text-sky-200" size={14} />
+                                        <Gift className="animate-gift-jiggle text-amber-300 drop-shadow" size={22} />
+                                        <Snowflake className="animate-spin text-sky-200" size={14} />
+                                    </div>
+                                    <span className="text-xs mt-1 font-black text-amber-200 drop-shadow tracking-wide">{s}</span>
+                                </div>
+                            ) :
                             animationType === 'pulse' ? <Heart className="animate-calm-pulse text-rose-400" size={24} /> :
                             animationType === 'fade' ? <span className="text-slate-300 animate-pulse font-black">...</span> :
                             <Shuffle className="text-indigo-300" size={18} />

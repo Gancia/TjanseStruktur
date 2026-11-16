@@ -267,3 +267,107 @@
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
 .theme-night .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
+
+
+/* === JUL 2000000% GAS ANIMATIONER === */
+@keyframes aurora-wave {
+    0%, 100% { transform: translateX(-10%) skewX(-12deg) scaleY(1); opacity: 0.45; }
+    50% { transform: translateX(10%) skewX(12deg) scaleY(1.25); opacity: 0.75; }
+}
+.animate-aurora-1 {
+    background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.45), rgba(52, 211, 153, 0.6), rgba(168, 85, 247, 0.4), transparent);
+    filter: blur(28px);
+    animation: aurora-wave 6s ease-in-out infinite;
+}
+.animate-aurora-2 {
+    background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.3), rgba(251, 191, 36, 0.35), rgba(16, 185, 129, 0.45), transparent);
+    filter: blur(36px);
+    animation: aurora-wave 8s ease-in-out infinite reverse;
+}
+
+@keyframes snowfall {
+    0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 0; }
+    10% { opacity: var(--snow-opacity, 0.9); }
+    50% { transform: translateY(50vh) translateX(var(--snow-sway, 30px)) rotate(180deg); }
+    90% { opacity: var(--snow-opacity, 0.9); }
+    100% { transform: translateY(110vh) translateX(calc(var(--snow-sway, 30px) * -0.5)) rotate(360deg); opacity: 0; }
+}
+.snowflake-particle {
+    position: absolute;
+    top: -10vh;
+    animation: snowfall var(--snow-dur, 4s) linear infinite;
+    pointer-events: none;
+}
+
+@keyframes sleigh-fly {
+    0% { transform: translate(-25vw, 18vh) rotate(-6deg) scale(0.85); opacity: 0; }
+    10% { opacity: 1; }
+    35% { transform: translate(25vw, 6vh) rotate(-2deg) scale(1); }
+    65% { transform: translate(65vw, 14vh) rotate(3deg) scale(1.05); }
+    90% { opacity: 1; }
+    100% { transform: translate(115vw, 2vh) rotate(-4deg) scale(0.9); opacity: 0; }
+}
+.animate-sleigh-fly {
+    animation: sleigh-fly 5.2s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+
+@keyframes rudolph-nose {
+    0%, 100% { filter: drop-shadow(0 0 6px #ef4444) drop-shadow(0 0 14px #dc2626); opacity: 1; }
+    50% { filter: drop-shadow(0 0 14px #f87171) drop-shadow(0 0 28px #ef4444); opacity: 0.75; }
+}
+.animate-rudolph-nose {
+    animation: rudolph-nose 0.45s ease-in-out infinite;
+}
+
+@keyframes twinkle-bulb {
+    0%, 100% { opacity: 1; transform: scale(1.1); filter: brightness(1.3); }
+    50% { opacity: 0.35; transform: scale(0.9); filter: brightness(0.7); }
+}
+.christmas-bulb {
+    animation: twinkle-bulb 0.9s ease-in-out infinite;
+}
+
+@keyframes christmas-star-glow {
+    0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.9)); }
+    50% { transform: scale(1.15) rotate(15deg); filter: drop-shadow(0 0 40px rgba(253, 224, 71, 1)); }
+}
+.animate-christmas-star {
+    animation: christmas-star-glow 2s ease-in-out infinite;
+}
+
+@keyframes gift-jiggle {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    20% { transform: rotate(-10deg) scale(1.08); }
+    40% { transform: rotate(10deg) scale(1.12); }
+    60% { transform: rotate(-6deg) scale(1.08); }
+    80% { transform: rotate(6deg) scale(1.04); }
+}
+.animate-gift-jiggle {
+    animation: gift-jiggle 0.8s ease-in-out infinite;
+}
+
+@keyframes christmas-text-pop {
+    0%, 100% { transform: scale(1) rotate(-1deg); text-shadow: 0 0 25px rgba(251, 191, 36, 0.9), 0 0 50px rgba(220, 38, 38, 0.8); }
+    50% { transform: scale(1.08) rotate(1deg); text-shadow: 0 0 40px rgba(253, 224, 71, 1), 0 0 70px rgba(16, 185, 129, 0.9); }
+}
+.animate-christmas-text {
+    animation: christmas-text-pop 1.2s ease-in-out infinite;
+}
+
+@keyframes christmas-burst {
+    0% { transform: translate(-50%, -50%) scale(0.2) rotate(0deg); opacity: 0; }
+    12% { opacity: 1; }
+    45% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.2) rotate(180deg); opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--tx) * 1.6), 110vh) scale(0.9) rotate(540deg); opacity: 0; }
+}
+.animate-christmas-burst {
+    animation: christmas-burst var(--dur, 2.4s) cubic-bezier(0.15, 0.6, 0.35, 1) forwards;
+}
+
+@keyframes christmas-card-glow {
+    0%, 100% { box-shadow: 0 0 12px rgba(239, 68, 68, 0.4), inset 0 0 12px rgba(251, 191, 36, 0.25); }
+    50% { box-shadow: 0 0 22px rgba(16, 185, 129, 0.6), inset 0 0 18px rgba(251, 191, 36, 0.45); }
+}
+.animate-christmas-card {
+    animation: christmas-card-glow 1s ease-in-out infinite;
+}

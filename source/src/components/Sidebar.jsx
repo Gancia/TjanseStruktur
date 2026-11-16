@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Users, Pencil, X, Plus, Type, Users2, UserMinus, Download, Upload, 
-  SunMedium, Zap, Loader, Sparkles, Heart, Rocket, Dice5, Ghost, Wand2
+  SunMedium, Zap, Loader, Sparkles, Heart, Rocket, Dice5, Ghost, Wand2, Gift
 } from 'lucide-react';
 
 const Sidebar = ({ 
@@ -150,9 +150,10 @@ const Sidebar = ({
                                             {id: 'rocket', icon: Rocket, label: 'Raket'},
                                             {id: 'slot', icon: Dice5, label: 'Tromle'},
                                             {id: 'ghost', icon: Ghost, label: 'Spøgelse'},
-                                            {id: 'magic', icon: Wand2, label: 'Magi'}
+                                            {id: 'magic', icon: Wand2, label: 'Magi'},
+                                            {id: 'christmas', icon: Gift, label: 'Juleri', fullWidth: true}
                                         ].map(a => (
-                                            <button key={a.id} type="button" onClick={() => {setAnimationType(a.id); saveToLocalStorage({animationType: a.id});}} className={`flex items-center gap-1 p-1.5 text-[9px] font-black uppercase border rounded-md transition-all ${animationType === a.id ? `bg-orange-500 text-white border-transparent shadow-sm scale-[1.02]` : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}>
+                                            <button key={a.id} type="button" onClick={() => {setAnimationType(a.id); saveToLocalStorage({animationType: a.id});}} className={`flex items-center justify-center gap-1 p-1.5 text-[9px] font-black uppercase border rounded-md transition-all ${a.fullWidth ? 'col-span-2' : ''} ${animationType === a.id ? (a.id === 'christmas' ? 'bg-gradient-to-r from-red-600 via-rose-600 to-emerald-600 text-white border-amber-300 shadow-md scale-[1.02]' : 'bg-orange-500 text-white border-transparent shadow-sm scale-[1.02]') : (a.id === 'christmas' ? 'bg-red-50/70 text-red-600 border-red-200 hover:bg-red-100' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50')}`}>
                                                 <a.icon size={10}/> {a.label}
                                             </button>
                                         ))}

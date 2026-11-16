@@ -80,6 +80,7 @@ const App = () => {
         activeEffect={logic.activeEffect} 
         countdown={logic.countdown} 
         spookyText={logic.spookyText}
+        christmasText={logic.christmasText}
       />
 
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 gap-4 no-print">
